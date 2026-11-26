@@ -1,0 +1,236 @@
+/* ============================================================================
+   THPTQG 2026 Vật Lý — Source Harvester & LaTeX Exam Studio
+   Complementary Academic Stylesheet (Tailwind Mobile-First + KaTeX + SVG + A4 Print)
+   ============================================================================ */
+
+:root {
+    --font-sans: "Be Vietnam Pro", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+code,
+pre,
+.font-mono {
+    font-family: var(--font-mono);
+}
+
+/* --- Mobile-Safe KaTeX Rendering --- */
+.katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.35rem 0;
+    margin: 0.5rem 0 !important;
+    max-width: 100%;
+}
+
+.katex {
+    font-size: 1.03em;
+}
+
+.math-content {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.latex-code-box {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    margin: 0;
+}
+
+/* --- Subtle Scrollbars --- */
+.thin-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.45);
+    border-radius: 9999px;
+}
+
+/* --- Inline Physics SVG Diagram Container (Light & Dark Adaptive) --- */
+.physics-svg-frame {
+    margin: 0.85rem 0;
+    padding: 0.85rem;
+    border-radius: 0.85rem;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    overflow-x: auto;
+}
+
+html.dark .physics-svg-frame {
+    border-color: #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+.physics-svg-frame svg {
+    width: 100%;
+    max-width: 460px;
+    height: auto;
+    display: block;
+}
+
+.physics-svg-caption {
+    font-size: 0.74rem;
+    font-style: italic;
+    color: #475569;
+    text-align: center;
+}
+
+html.dark .physics-svg-caption {
+    color: #94a3b8;
+}
+
+/* --- Physical Constants Banner --- */
+.constants-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.6rem;
+    background: #ffffff;
+    border: 1px solid #bae6fd;
+    font-size: 0.8rem;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+html.dark .constants-chip {
+    background: #0f172a;
+    border-color: #1e3a5f;
+    color: #e2e8f0;
+}
+
+/* --- Part III Short-Answer Slots --- */
+.answer-slot {
+    width: 26px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1.5px dashed #d97706;
+    background: rgba(245, 158, 11, 0.1);
+    display: inline-block;
+}
+
+/* --- Active View Mode Segmented Button --- */
+.segmented-btn.active {
+    background: #ffffff;
+    color: #0369a1;
+    border-color: #e2e8f0;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+html.dark .segmented-btn.active {
+    background: #0f172a;
+    color: #38bdf8;
+    border-color: #334155;
+}
+
+/* --- Active Provider Card in AI Settings Modal --- */
+.provider-card.active {
+    border-color: #0284c7;
+    background: rgba(2, 132, 199, 0.08);
+}
+
+html.dark .provider-card.active {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.14);
+}
+
+/* --- Toast Animations --- */
+.toast-item {
+    pointer-events: auto;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+/* --- Print / Save as PDF A4 Exam Paper Mode --- */
+@media print {
+    header,
+    #storageStatusStrip,
+    #aiSetupBanner,
+    #harvesterControlSection,
+    #statsSection,
+    #historySection,
+    #emptyStateSection,
+    footer,
+    .modal-backdrop,
+    #toastContainer,
+    .no-print,
+    .latex-box,
+    [data-copy-single],
+    #btnToggleSolutions {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-size: 11pt;
+    }
+
+    .print-clean-card {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 4px 0 !important;
+        break-inside: avoid;
+    }
+
+    .print-part-banner {
+        background: none !important;
+        color: #000000 !important;
+        border-bottom: 1.5px solid #000000 !important;
+        border-radius: 0 !important;
+        padding: 8px 0 !important;
+        box-shadow: none !important;
+    }
+
+    .print-part-banner p {
+        color: #333333 !important;
+    }
+
+    .constants-box-print {
+        border: 1px solid #000000 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        break-inside: avoid;
+    }
+
+    .constants-chip {
+        border: none !important;
+        background: transparent !important;
+        color: #000000 !important;
+        box-shadow: none !important;
+        padding: 2px 6px !important;
+    }
+
+    .physics-svg-frame {
+        border: 1px solid #94a3b8 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        break-inside: avoid;
+    }
+}

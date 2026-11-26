@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>THPTQG 2026 Vật Lý — Source Harvester &amp; LaTeX Exam Studio</title>
+    <meta name="description" content="Website độc lập kéo nguồn câu hỏi Vật Lý thực tế qua /api/harvest từ 8 kho mở đã kiểm chứng và biên soạn đề thi minh họa THPTQG 2026 chuẩn GDPT 2018 (QĐ 764/QĐ-BGDĐT · 28 câu · 50 phút · 0% CT 2006), hiển thị KaTeX + SVG nội tuyến &amp; xuất .tex.">
+
+    <!-- Google Fonts: Be Vietnam Pro & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS v3 Mobile-First CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Be Vietnam Pro"', "system-ui", "-apple-system", "sans-serif"],
+                        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"]
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- KaTeX 0.16.11 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Complementary Academic & A4 Print Stylesheet -->
+    <link rel="stylesheet" href="./styles.css">
+
+    <!-- Early Theme Boot to avoid flash -->
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem("thptqg2026_vatly_theme_v2") === "dark") {
+                    document.documentElement.classList.add("dark");
+                }
+            } catch (e) {}
+        })();
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- ==================== STICKY HEADER ==================== -->
+    <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-6xl mx-auto px-3 sm:px-6 min-h-[64px] py-2 flex items-center justify-between gap-2">
+            <!-- Brand Identity -->
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-600 to-cyan-600 text-white flex items-center justify-center shadow-sm shrink-0" aria-hidden="true">
+                    <!-- Atomic Orbit Physics Emblem -->
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                        <circle cx="12" cy="12" r="2.1" fill="currentColor"></circle>
+                        <ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(30 12 12)"></ellipse>
+                        <ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(-30 12 12)"></ellipse>
+                        <ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(90 12 12)"></ellipse>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
+                            THPTQG 2026 Vật Lý
+                        </h1>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            GDPT 2018 · 0% RLC/LC/Bo
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        Source Harvester &amp; LaTeX Exam Studio
+                    </p>
+                </div>
+            </div>
+
+            <!-- Header Actions -->
+            <nav class="flex items-center gap-1.5 sm:gap-2 shrink-0" aria-label="Điều khiển chính">
+                <button id="btnOpenAiTop" type="button" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 transition cursor-pointer" title="Cấu hình AI Miễn Phí (Gemini, Groq, OpenRouter)">
+                    <span id="topAiDot" class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span id="topAiLabel" class="font-mono max-w-[115px] sm:max-w-[180px] truncate">Cài đặt AI</span>
+                </button>
+
+                <button id="btnOpenVaultTop" type="button" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 transition cursor-pointer" title="Quản lý Kho dữ liệu &amp; Đồng bộ Cloud">
+                    <span id="topStorageDot" class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span id="topVaultLabel" class="font-mono">THPTQG-VATLY-2026-MAIN</span>
+                </button>
+
+                <button id="btnJumpHistory" type="button" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition cursor-pointer" title="Xem Lịch sử đề đã lưu">
+                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="hidden md:inline">Lịch sử</span>
+                    <span id="topSavedCountBadge" class="px-1.5 py-0.5 rounded-md bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-mono text-[11px] font-bold">0</span>
+                </button>
+
+                <button id="btnToggleTheme" type="button" aria-label="Đổi giao diện Sáng / Tối" title="Đổi giao diện Sáng / Tối" class="w-9 h-9 inline-flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-amber-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer">
+                    <svg id="iconSun" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/>
+                    </svg>
+                    <svg id="iconMoon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/>
+                    </svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ==================== STORAGE & SYNC STATUS STRIP ==================== -->
+    <div id="storageStatusStrip" class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-6xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 min-w-0">
+                <span id="stripDot" class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                <span id="stripText" class="truncate">💾 Lưu cục bộ vĩnh viễn (IndexedDB) · Kho: <strong id="stripVaultKey" class="font-mono text-slate-900 dark:text-white">THPTQG-VATLY-2026-MAIN</strong></span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-1.5">
+                <button id="btnSyncCloud" type="button" class="hidden px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition cursor-pointer">🔄 Đồng bộ Cloud</button>
+                <button id="btnOpenVaultBar" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition cursor-pointer">🗂️ Kho &amp; Cloud</button>
+                <button id="btnQuickExportJson" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition cursor-pointer">⬇ Xuất .json</button>
+                <label class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition cursor-pointer" title="Nhập sao lưu .json">
+                    ⬆ Nhập .json
+                    <input id="quickImportFileInput" type="file" accept=".json,application/json" class="hidden">
+                </label>
+            </div>
+        </div>
+
+        <div id="cloudErrorBanner" class="hidden bg-rose-600 text-white text-xs font-semibold py-2">
+            <div class="max-w-6xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-3">
+                <span id="cloudErrorText"></span>
+                <button id="btnDismissCloudError" type="button" class="px-2.5 py-1 rounded bg-white/20 hover:bg-white/30 text-[11px] font-bold cursor-pointer">Ẩn</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MAIN CONTAINER ==================== -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-5 space-y-5">
+
+        <!-- Gentle Setup Callout (Auto-hides once Server Proxy Key or Browser Key is active) -->
+        <section id="aiSetupBanner" class="hidden rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3" aria-label="Hướng dẫn kích hoạt AI miễn phí">
+            <div class="space-y-1 max-w-2xl">
+                <h2 class="text-sm font-extrabold text-sky-900 dark:text-sky-200">⚡ Kích hoạt AI Miễn Phí trong 30 giây (Không cần thẻ tín dụng)</h2>
+                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Lấy 1 API Key miễn phí từ <strong>Google AI Studio</strong> (<code>gemini-3.5-flash-lite</code> 500 lượt/ngày &amp; <code>gemini-4-hydrogen</code>),
+                    <strong>GroqCloud</strong> (<code>openai/gpt-oss-120b</code>, 1.000 lượt/ngày), hoặc <strong>OpenRouter</strong> (<code>openrouter/free</code>) rồi dán vào mục Cài đặt AI.
+                </p>
+            </div>
+            <button id="btnSetupAiNow" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-sm transition shrink-0 cursor-pointer">
+                🔑 Nhập API Key miễn phí
+            </button>
+        </section>
+
+        <!-- 1. HARVESTER CONTROL HERO PANEL -->
+        <section id="harvesterControlSection" class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div class="p-4 sm:p-6 space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+                    <div class="lg:col-span-7 space-y-2.5">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                                QĐ 764/QĐ-BGDĐT · 28 Câu · 50 Phút
+                            </span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                8 Nguồn Mở 200 OK (4 🇻🇳 HF + 4 🌐 QT)
+                            </span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                4 Lô Tuần Tự · Đồ Thị SVG
+                            </span>
+                        </div>
+                        <h2 class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug">
+                            Kéo Nguồn Thực Tế &amp; Tạo Đề Thi THPTQG 2026 Môn Vật Lý
+                        </h2>
+                        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Kéo nguồn qua proxy <code class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[11px] font-semibold text-sky-700 dark:text-sky-300">/api/harvest</code> từ 4 kho Vật Lý THPT tiếng Việt trên HuggingFace
+                            (<code class="px-1 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/70 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">tridm/VMLU</code>,
+                            <code class="px-1 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/70 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">chiayewken/m3exam</code>,
+                            <code class="px-1 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/70 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">alexandrainst/m_mmlu</code>,
+                            <code class="px-1 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/70 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">Vietnamese-Entrance-Exam</code>)
+                            cùng 4 nguồn Quốc tế (Physics Stack Exchange 10 tags, <code>cais/mmlu</code> HS &amp; College Physics, <code>allenai/sciq</code>). Chặn tuyệt đối kiến thức CT 2006 (RLC, Fresnel, LC, Bo), chống lỗi thiếu hình vẽ, lưu bền vững bằng IndexedDB.
+                        </p>
+                    </div>
+
+                    <div class="lg:col-span-5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 p-3.5 space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div class="space-y-1">
+                                <label for="sourcePrioritySelect" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ưu tiên nguồn đề</label>
+                                <select id="sourcePrioritySelect" class="w-full min-h-[42px] px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                                    <option value="vn_priority" selected>🇻🇳 Ưu tiên Tiếng Việt (70% VN + 30% QT)</option>
+                                    <option value="vn_only">🇻🇳 100% Vật Lý THPT Tiếng Việt</option>
+                                    <option value="balanced">⚖️ Cân bằng 50/50</option>
+                                    <option value="intl_only">🌐 Chỉ nguồn Quốc tế</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="difficultySelect" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mức độ phân hóa</label>
+                                <select id="difficultySelect" class="w-full min-h-[42px] px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                                    <option value="standard" selected>Chuẩn BGD 2026</option>
+                                    <option value="high">Phân hóa cao (8.5 – 9+)</option>
+                                    <option value="extreme">Vận dụng cao (9.5 – 10)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-300">
+                            <span class="truncate">AI: <strong id="heroAiSummary" class="font-mono text-slate-900 dark:text-white">Đang kiểm tra...</strong></span>
+                            <button id="btnChangeAiHero" type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition shrink-0 cursor-pointer">Đổi AI / Model</button>
+                        </div>
+
+                        <button id="btnGenerateExam" type="button" class="w-full inline-flex items-center justify-center gap-2 min-h-[46px] px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 active:scale-[0.99] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer">
+                            <svg id="iconGenerateIdle" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+                            </svg>
+                            <svg id="iconGenerateSpin" class="w-4 h-4 shrink-0 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span id="btnGenerateLabel">Kéo Source &amp; Tạo Đề Vật Lý 2026</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Progress Bar -->
+                <div id="progressContainer" class="hidden rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 p-3.5 space-y-2">
+                    <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                        <span id="progressMessage" class="text-sky-700 dark:text-sky-300 truncate">Đang khởi tạo phiên kéo nguồn CSPRNG...</span>
+                        <span id="progressPercent" class="font-mono text-slate-800 dark:text-slate-100 shrink-0">0%</span>
+                    </div>
+                    <div class="w-full h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                        <div id="progressBarFill" class="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span id="progressBatchDetail">Đang chờ bắt đầu...</span>
+                        <span id="progressEntropyBadge" class="px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-700 font-mono text-[10px] font-semibold text-slate-700 dark:text-slate-200">CSPRNG-128: ---</span>
+                    </div>
+                </div>
+
+                <!-- Collapsible Harvester & AI Log -->
+                <div class="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <button id="btnToggleLog" type="button" aria-expanded="false" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 transition cursor-pointer">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/>
+                            </svg>
+                            <span>Nhật ký Harvester (/api/harvest), Bộ lọc CT 2006 &amp; AI 4 Lô Tuần Tự</span>
+                            <span id="logCountBadge" class="px-1.5 py-0.5 rounded-md bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-mono text-[10px]">0 dòng</span>
+                        </span>
+                        <svg id="logChevron" class="w-4 h-4 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                        </svg>
+                    </button>
+                    <div id="logPanel" class="hidden bg-slate-950 text-slate-200 font-mono text-[11px] leading-relaxed p-3 max-h-56 overflow-y-auto thin-scroll space-y-1">
+                        <div class="flex gap-2"><span class="text-slate-500">[boot]</span><span class="text-sky-300">Hệ thống THPTQG 2026 Vật Lý sẵn sàng.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. DASHBOARD STAT CARDS -->
+        <section id="statsSection" class="grid grid-cols-2 sm:grid-cols-5 gap-2.5" aria-label="Thống kê kho đề">
+            <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 text-center shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tổng câu đã khóa</p>
+                <p id="statLockedHashes" class="mt-1 font-mono text-2xl font-extrabold text-sky-700 dark:text-sky-400">0</p>
+            </div>
+            <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 text-center shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">🇻🇳 Nguồn VN</p>
+                <p id="statVnSources" class="mt-1 font-mono text-2xl font-extrabold text-emerald-700 dark:text-emerald-400">0</p>
+            </div>
+            <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 text-center shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">🌐 Nguồn QT</p>
+                <p id="statIntlSources" class="mt-1 font-mono text-2xl font-extrabold text-cyan-700 dark:text-cyan-400">0</p>
+            </div>
+            <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 text-center shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Trùng / 2006 đã chặn</p>
+                <p id="statBlockedDups" class="mt-1 font-mono text-2xl font-extrabold text-amber-600 dark:text-amber-400">0</p>
+            </div>
+            <div class="col-span-2 sm:col-span-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 text-center shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Đề đã lưu</p>
+                <p id="statSavedExams" class="mt-1 font-mono text-2xl font-extrabold text-slate-900 dark:text-white">0</p>
+            </div>
+        </section>
+
+        <!-- 3. PERSISTENT EXAM HISTORY PANEL -->
+        <section id="historySection" class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                <button id="btnToggleHistoryBody" type="button" class="flex items-center gap-2.5 text-left cursor-pointer">
+                    <span class="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0" aria-hidden="true">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                            <span>Lịch sử đề Vật Lý đã tạo</span>
+                            <span id="historyPanelBadge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-mono">0 đề</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Bấm vào bất kỳ đề nào để mở lại xem công thức, đồ thị SVG, in PDF hoặc copy LaTeX — Kho: <strong id="historyVaultKeyInline" class="font-mono text-slate-700 dark:text-slate-200">THPTQG-VATLY-2026-MAIN</strong>
+                        </p>
+                    </div>
+                </button>
+
+                <div class="flex items-center gap-2">
+                    <button id="btnClearVaultFromHistory" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 transition cursor-pointer">
+                        Dọn sạch Kho
+                    </button>
+                    <button id="btnCollapseHistory" type="button" aria-label="Thu gọn hoặc mở rộng lịch sử" class="w-8 h-8 inline-flex items-center justify-center rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer">
+                        <svg id="historyChevron" class="w-4 h-4 transition-transform duration-200" style="transform: rotate(180deg);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="historyPanelBody" class="p-3.5 sm:p-4">
+                <div id="historyListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    <div class="md:col-span-2 p-5 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
+                        Đang tải danh sách đề đã lưu...
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. EMPTY WELCOME STATE -->
+        <section id="emptyStateSection" class="rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 p-6 sm:p-8 text-center space-y-5">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-100 dark:border-sky-900" aria-hidden="true">
+                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                </svg>
+            </div>
+            <div class="max-w-2xl mx-auto space-y-2">
+                <h3 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+                    Sẵn sàng tạo Bộ Đề Minh Họa Vật Lý THPTQG 2026 chuẩn BGD (28 câu · 50 phút)
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                    Nhấn <strong>"Kéo Source &amp; Tạo Đề Vật Lý 2026"</strong> để hệ thống kéo hạt giống thực tế qua <code>/api/harvest</code>, gọi tuần tự 4 lô AI (không timeout trên Vercel), lọc sạch 0% kiến thức CT 2006 (RLC, Fresnel, LC, Bo), chống lỗi thiếu hình vẽ và tự vẽ đồ thị SVG nội tuyến.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-4xl mx-auto text-left">
+                <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">PHẦN I · 4,5 điểm</span>
+                    <h4 class="text-sm font-extrabold text-slate-900 dark:text-white">18 câu Trắc nghiệm 4 chọn 1</h4>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">0,25 đ/câu · Biên soạn tuần tự 2 lô (<strong>1–9</strong> &amp; <strong>10–18</strong>), tách sẵn 3 nút copy chống cắt đề trên điện thoại.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">PHẦN II · 4,0 điểm</span>
+                    <h4 class="text-sm font-extrabold text-slate-900 dark:text-white">4 câu Đúng / Sai (16 ý)</h4>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">Phủ đủ 4 chương Lớp 12 (Nhiệt, Khí, Từ trường, Hạt nhân), có đề dẫn thí nghiệm, bảng số liệu hoặc đồ thị SVG.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">PHẦN III · 1,5 điểm</span>
+                    <h4 class="text-sm font-extrabold text-slate-900 dark:text-white">6 câu Trả lời ngắn</h4>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">0,25 đ/câu · Đáp số chuẩn phiếu tô tối đa <strong>4 ký tự</strong> (dùng dấu phẩy <code>,</code>), ghi rõ làm tròn nếu số lẻ.</p>
+                </div>
+            </div>
+
+            <!-- Standard Constants Preview on Welcome -->
+            <div class="max-w-4xl mx-auto rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900 p-4 text-left space-y-2">
+                <div class="text-xs font-extrabold uppercase tracking-wider text-sky-800 dark:text-sky-300">
+                    📐 Khung Hằng Số Vật Lý Chuẩn (tự động gắn đầu đề thi &amp; file .tex)
+                </div>
+                <div id="welcomeConstantsPreview" class="flex flex-wrap gap-2"></div>
+            </div>
+        </section>
+
+        <!-- 5. GENERATED / LOADED EXAM WORKSPACE -->
+        <section id="examWorkspace" class="hidden space-y-5">
+
+            <!-- Exam Metadata & Display Mode Toolbar -->
+            <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-5 space-y-4 print-clean-card">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="space-y-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="examCodeBadge" class="px-2.5 py-1 rounded-lg bg-slate-900 dark:bg-sky-600 text-white font-mono text-xs font-extrabold tracking-wider">MÃ ĐỀ: 2026</span>
+                            <span id="examDiffBadge" class="px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-800 dark:text-sky-300 text-xs font-bold border border-sky-200 dark:border-sky-800">Chuẩn BGD 2026</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">50 phút · 28 câu · 10 điểm</span>
+                        </div>
+                        <p id="examMetaSub" class="text-xs text-slate-500 dark:text-slate-400">Đang tải thông tin đề...</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 no-print">
+                        <button id="btnPrintExam" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 transition cursor-pointer">
+                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z"/>
+                            </svg>
+                            <span>In / Lưu PDF</span>
+                        </button>
+                        <button id="btnDownloadTex" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition cursor-pointer">
+                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                            </svg>
+                            <span>Tải file .tex</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 no-print">
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Chế độ hiển thị đề:</span>
+                    <div class="inline-flex flex-wrap p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 gap-1" role="group" aria-label="Chế độ hiển thị">
+                        <button type="button" data-view-mode="both" class="segmented-btn active px-3 py-1.5 rounded-lg text-xs font-semibold border border-transparent text-slate-600 dark:text-slate-300 transition cursor-pointer">Song song (KaTeX + LaTeX)</button>
+                        <button type="button" data-view-mode="latex" class="segmented-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-transparent text-slate-600 dark:text-slate-300 transition cursor-pointer">Mã LaTeX thuần</button>
+                        <button type="button" data-view-mode="katex" class="segmented-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-transparent text-slate-600 dark:text-slate-300 transition cursor-pointer">Xem công thức (KaTeX)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STANDARD PHYSICAL CONSTANTS BOX AT TOP OF EXAM -->
+            <div id="examConstantsBox" class="constants-box-print rounded-2xl bg-sky-50/90 dark:bg-sky-950/35 border border-sky-200 dark:border-sky-900 p-4 space-y-2.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded-md bg-sky-600 text-white text-[10px] font-extrabold uppercase tracking-wider">Hằng số Vật lý</span>
+                        <span class="text-xs font-bold text-sky-900 dark:text-sky-200">Cho biết các hằng số dùng chung trong đề thi (tự động chèn vào file .tex):</span>
+                    </div>
+                    <button id="btnCopyConstants" type="button" class="no-print inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white hover:bg-sky-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 transition cursor-pointer">
+                        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="9" y="9" width="11" height="13" rx="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span>Copy Hằng số</span>
+                        <span id="charConstants" class="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 font-mono text-[10px]">0 ký tự</span>
+                    </button>
+                </div>
+                <div id="examConstantsGrid" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- PHẦN I (18 CÂU — 4,5 ĐIỂM) -->
+            <div class="space-y-3">
+                <div class="print-part-banner rounded-2xl bg-gradient-to-r from-sky-700 to-cyan-700 text-white p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h3 class="text-sm sm:text-base font-extrabold tracking-tight">
+                            PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (18 câu — 4,5 điểm)
+                        </h3>
+                        <p class="text-xs text-sky-100">
+                            Thí sinh trả lời từ câu 1 đến câu 18. Mỗi câu hỏi thí sinh chỉ chọn một phương án (0,25 điểm/câu).
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 no-print">
+                        <button id="btnCopyPart1First" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold border border-white/25 transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="11" height="13" rx="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Copy Phần I (1–9)</span>
+                            <span id="charPart1First" class="px-1.5 py-0.5 rounded bg-black/25 font-mono text-[10px]">0 ký tự</span>
+                        </button>
+                        <button id="btnCopyPart1Second" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold border border-white/25 transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="11" height="13" rx="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Copy Phần I (10–18)</span>
+                            <span id="charPart1Second" class="px-1.5 py-0.5 rounded bg-black/25 font-mono text-[10px]">0 ký tự</span>
+                        </button>
+                        <button id="btnCopyPart1All" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-sky-50 text-sky-900 text-xs font-extrabold shadow-xs transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="11" height="13" rx="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Copy Phần I (1–18)</span>
+                            <span id="charPart1All" class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-900 font-mono text-[10px]">0 ký tự</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="part1Container" class="space-y-3"></div>
+            </div>
+
+            <!-- PHẦN II (4 CÂU ĐÚNG/SAI — 4,0 ĐIỂM) -->
+            <div class="space-y-3">
+                <div class="print-part-banner rounded-2xl bg-gradient-to-r from-emerald-700 to-teal-700 text-white p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h3 class="text-sm sm:text-base font-extrabold tracking-tight">
+                            PHẦN II. Câu trắc nghiệm đúng sai (4 câu — 4,0 điểm)
+                        </h3>
+                        <p class="text-xs text-emerald-100">
+                            Thí sinh trả lời từ câu 1 đến câu 4. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 no-print">
+                        <button id="btnCopyPart2All" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 text-emerald-900 text-xs font-extrabold shadow-xs transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="11" height="13" rx="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Copy Phần II (1–4)</span>
+                            <span id="charPart2All" class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 font-mono text-[10px]">0 ký tự</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="part2Container" class="space-y-3"></div>
+            </div>
+
+            <!-- PHẦN III (6 CÂU TRẢ LỜI NGẮN — 1,5 ĐIỂM) -->
+            <div class="space-y-3">
+                <div class="print-part-banner rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 text-white p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h3 class="text-sm sm:text-base font-extrabold tracking-tight">
+                            PHẦN III. Câu trắc nghiệm trả lời ngắn (6 câu — 1,5 điểm)
+                        </h3>
+                        <p class="text-xs text-amber-100">
+                            Thí sinh trả lời từ câu 1 đến câu 6 (0,25 đ/câu). Đáp số tối đa 4 ký tự dùng dấu phẩy ',' (tính cả dấu '-' và ',').
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 no-print">
+                        <button id="btnCopyPart3All" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-amber-50 text-amber-900 text-xs font-extrabold shadow-xs transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="11" height="13" rx="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Copy Phần III (1–6)</span>
+                            <span id="charPart3All" class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono text-[10px]">0 ký tự</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="part3Container" class="space-y-3"></div>
+            </div>
+
+            <!-- BẢNG ĐÁP ÁN & LỜI GIẢI -->
+            <div class="space-y-3">
+                <div class="print-part-banner rounded-2xl bg-gradient-to-r from-slate-800 to-slate-700 text-white p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h3 class="text-sm sm:text-base font-extrabold tracking-tight">
+                            BẢNG ĐÁP ÁN &amp; GỢI Ý GIẢI NHANH (Đơn vị SI + Casio fx-580VN X)
+                        </h3>
+                        <p class="text-xs text-slate-300">
+                            Đáp án chính xác đủ 28 câu kèm hướng dẫn giải súc tích, đổi đơn vị hệ SI và mẹo bấm Casio chuẩn GDPT 2018.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 no-print">
+                        <button id="btnToggleSolutions" type="button" class="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold border border-white/25 transition cursor-pointer">
+                            Ẩn / Hiện lời giải
+                        </button>
+                        <button id="btnCopyAnswersAll" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-900 text-xs font-extrabold shadow-xs transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="11" height="13" rx="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Copy Đáp án &amp; Gợi ý giải nhanh</span>
+                            <span id="charAnswersAll" class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-900 font-mono text-[10px]">0 ký tự</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="answersContainer" class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 space-y-5 print-clean-card"></div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4">
+        <div class="max-w-6xl mx-auto px-3 sm:px-6 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span>THPTQG 2026 Vật Lý — Source Harvester &amp; LaTeX Exam Studio · QĐ 764/QĐ-BGDĐT (28 câu · 50 phút)</span>
+            <span class="font-mono">8 Verified APIs · 128-bit CSPRNG · 4 Sequential Batches · IndexedDB</span>
+        </div>
+    </footer>
+
+    <!-- ==================== MODAL 1: AI ENGINE & FREE MODELS SETTINGS ==================== -->
+    <div id="aiSettingsModal" class="modal-backdrop hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5" role="dialog" aria-modal="true" aria-labelledby="aiModalTitle">
+        <div class="w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3">
+                <div>
+                    <h3 id="aiModalTitle" class="text-base font-extrabold text-slate-900 dark:text-white">Cài đặt AI Miễn Phí (Biên soạn Đề Vật Lý 2026)</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Hỗ trợ Gemini / GroqCloud / OpenRouter / Custom · Chạy trực tiếp trình duyệt hoặc Server Proxy</p>
+                </div>
+                <button type="button" data-close-modal="aiSettingsModal" aria-label="Đóng" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="p-5 overflow-y-auto thin-scroll space-y-4">
+                <!-- Server Proxy Status -->
+                <div class="p-3.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 space-y-1.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Trạng thái kết nối Server Proxy</span>
+                        <span id="serverProxyBadge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 dark:bg-slate-700">Đang kiểm tra...</span>
+                    </div>
+                    <p id="serverProxyDesc" class="text-xs text-slate-600 dark:text-slate-300">
+                        Đang kiểm tra xem máy chủ (Vercel / Netlify / Node.js) có cấu hình sẵn API Key bảo mật hay không...
+                    </p>
+                </div>
+
+                <!-- Provider Picker -->
+                <div class="space-y-2">
+                    <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">1. Chọn nhà cung cấp AI miễn phí</span>
+                    <div id="providerCardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+                </div>
+
+                <!-- Model Picker -->
+                <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                    <div id="presetModelGroup" class="space-y-1">
+                        <label for="aiModelSelect" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Chọn Model miễn phí mới nhất</label>
+                        <select id="aiModelSelect" class="w-full min-h-[42px] px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"></select>
+                    </div>
+                    <div class="space-y-1">
+                        <label for="aiCustomModelInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Hoặc nhập Model ID tùy chỉnh (nếu muốn)</label>
+                        <input id="aiCustomModelInput" type="text" class="w-full min-h-[40px] px-3 py-2 rounded-xl text-xs font-mono bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="Để trống nếu dùng model đã chọn phía trên">
+                    </div>
+                    <p id="aiModelHint" class="text-xs text-slate-600 dark:text-slate-400"></p>
+                </div>
+
+                <!-- Custom OpenAI Base URL -->
+                <div id="customBaseUrlGroup" class="hidden p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <label for="aiCustomBaseUrlInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Base URL chuẩn OpenAI (/v1)</label>
+                    <input id="aiCustomBaseUrlInput" type="url" class="w-full min-h-[40px] px-3 py-2 rounded-xl text-xs font-mono bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="https://api.cerebras.ai/v1 hoặc http://localhost:11434/v1">
+                </div>
+
+                <!-- API Key Input -->
+                <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <label for="aiApiKeyInput" class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">3. API Key trên trình duyệt (Lưu cục bộ)</label>
+                        <a id="aiKeyHelpLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-sky-700 dark:text-sky-400 hover:underline">
+                            ↗ Lấy Key miễn phí (không cần thẻ)
+                        </a>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input id="aiApiKeyInput" type="password" autocomplete="off" class="flex-1 min-h-[40px] px-3 py-2 rounded-xl text-xs font-mono bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="Dán API Key tại đây (hoặc để trống nếu dùng Server Proxy)">
+                        <button id="btnToggleKeyVisibility" type="button" class="px-3 min-h-[40px] rounded-xl text-xs font-bold bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 cursor-pointer">Hiện</button>
+                    </div>
+                    <p id="aiKeyNote" class="text-[11px] text-slate-500 dark:text-slate-400">
+                        Key lưu riêng trong trình duyệt của bạn (<code>localStorage</code>). Nếu server đã đặt biến môi trường Key, có thể để trống ô này.
+                    </p>
+                </div>
+
+                <!-- Advanced Free-Tier Options -->
+                <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                    <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Tùy chọn tối ưu gói miễn phí</span>
+                    <div id="geminiThinkingGroup" class="space-y-1">
+                        <label for="aiThinkingLevelSelect" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mức suy luận Vật Lý (Gemini 4 &amp; 3.x)</label>
+                        <select id="aiThinkingLevelSelect" class="w-full min-h-[40px] px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                            <option value="LOW" selected>LOW — Nhanh nhất, tối ưu không timeout trên Vercel (Khuyên dùng)</option>
+                            <option value="MEDIUM">MEDIUM — Cân bằng tốc độ &amp; độ sâu suy luận</option>
+                            <option value="HIGH">HIGH — Suy luận sâu cho đề Vận dụng cao (chậm hơn)</option>
+                        </select>
+                    </div>
+
+                    <label class="flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                        <input id="chkAutoFallback" type="checkbox" checked class="mt-0.5 w-4 h-4 accent-sky-600">
+                        <span><strong>Tự động chuyển model miễn phí dự phòng tức thì</strong> khi gặp 429, 503 hoặc phản hồi chậm.</span>
+                    </label>
+
+                    <label id="rowGoogleSearchToggle" class="flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                        <input id="chkGoogleSearchFallback" type="checkbox" checked class="mt-0.5 w-4 h-4 accent-sky-600">
+                        <span><strong>Bật Google Search Grounding</strong> (chỉ Gemini) khi cần bổ sung ngữ cảnh thực tế.</span>
+                    </label>
+                </div>
+
+                <div id="aiTestResultBox" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+            </div>
+
+            <div class="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 flex flex-wrap items-center justify-end gap-2">
+                <button id="btnTestAiConnection" type="button" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 cursor-pointer">⚡ Kiểm tra kết nối</button>
+                <button type="button" data-close-modal="aiSettingsModal" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-200/70 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer">Đóng</button>
+                <button id="btnSaveAiSettings" type="button" class="px-4 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white cursor-pointer">Lưu cấu hình AI</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL 2: VAULT & OPTIONAL FIREBASE CLOUD SYNC ==================== -->
+    <div id="vaultModal" class="modal-backdrop hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5" role="dialog" aria-modal="true" aria-labelledby="vaultModalTitle">
+        <div class="w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3">
+                <div>
+                    <h3 id="vaultModalTitle" class="text-base font-extrabold text-slate-900 dark:text-white">Quản lý Kho Đề Vật Lý &amp; Đồng bộ Cloud</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Lưu vĩnh viễn bằng IndexedDB (tách biệt với web Toán) · Tùy chọn kết nối Firebase riêng</p>
+                </div>
+                <button type="button" data-close-modal="vaultModal" aria-label="Đóng" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="p-5 overflow-y-auto thin-scroll space-y-4">
+                <div class="p-3.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-extrabold uppercase tracking-wider">Mã Kho Đề &amp; Chống Trùng Lặp</span>
+                        <span id="modalStorageStatusBadge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">💾 Lưu cục bộ</span>
+                    </div>
+                    <p class="text-xs text-slate-600 dark:text-slate-300">
+                        Dữ liệu lưu bền vững trong <strong>IndexedDB</strong> trình duyệt. Bạn có thể tạo nhiều Mã Kho riêng cho từng lớp (VD: <code>12A1-LY</code>, <code>ON-THI-2026</code>).
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <input id="vaultKeyInput" type="text" class="flex-1 min-h-[40px] px-3 py-2 rounded-xl text-xs font-mono uppercase bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600" placeholder="THPTQG-VATLY-2026-MAIN">
+                        <button id="btnApplyVaultKey" type="button" class="px-3.5 min-h-[40px] rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white cursor-pointer">Chuyển Kho</button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btnResetDefaultKey" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer">Về Kho mặc định</button>
+                        <button id="btnCopyVaultKey" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer">Sao chép Mã Kho</button>
+                    </div>
+                    <p id="idbStatusLabel" class="font-mono text-[11px] text-emerald-700 dark:text-emerald-400">IndexedDB: Đang kiểm tra...</p>
+                </div>
+
+                <!-- Optional Firebase Sync -->
+                <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-extrabold uppercase tracking-wider">☁️ Đồng bộ nhiều thiết bị qua Firebase riêng (Tùy chọn)</span>
+                        <span id="modalFirebaseState" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 dark:bg-slate-700">Chưa bật</span>
+                    </div>
+                    <p class="text-xs text-slate-600 dark:text-slate-300">
+                        Dán khối <code>firebaseConfig</code> JSON (đã bật Anonymous Auth + Firestore) để đồng bộ tự động giữa điện thoại &amp; máy tính:
+                    </p>
+                    <textarea id="firebaseConfigInput" rows="4" class="w-full p-2.5 rounded-xl text-xs font-mono bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600" placeholder='{
+  "apiKey": "...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-app",
+  "appId": "1:123456:web:abcdef"
+}'></textarea>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btnConnectFirebase" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white cursor-pointer">Kết nối Firebase Cloud</button>
+                        <button id="btnDisconnectFirebase" type="button" class="hidden px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 dark:bg-slate-700 cursor-pointer">Ngắt kết nối (Chỉ Cục bộ)</button>
+                    </div>
+                </div>
+
+                <!-- Portable JSON Backup -->
+                <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <span class="block text-xs font-extrabold uppercase tracking-wider">Sao lưu &amp; Khôi phục Kho (.json)</span>
+                    <p class="text-xs text-slate-600 dark:text-slate-300">Xuất toàn bộ đề thi và dấu vân tay SHA-256 / 3-Gram ra tệp <code>.json</code> để chuyển sang thiết bị khác.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btnModalExportJson" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 cursor-pointer">⬇ Xuất Kho (.json)</button>
+                        <label class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 cursor-pointer">
+                            ⬆ Nhập Kho (.json)
+                            <input id="modalImportFileInput" type="file" accept=".json,application/json" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/35 border border-rose-200 dark:border-rose-900 space-y-2">
+                    <span class="block text-xs font-extrabold uppercase tracking-wider text-rose-700 dark:text-rose-300">Xóa toàn bộ Kho hiện tại</span>
+                    <p class="text-xs text-slate-600 dark:text-slate-300">Xóa toàn bộ đề thi và dấu vân tay chống trùng lặp của Mã Kho hiện tại.</p>
+                    <button id="btnOpenConfirmClearVault" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer">Dọn sạch Kho này...</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL 3: IN-PAGE CONFIRMATION ==================== -->
+    <div id="confirmModal" class="modal-backdrop hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+        <div class="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-5 space-y-2">
+                <h3 id="confirmModalTitle" class="text-base font-extrabold text-slate-900 dark:text-white">Xác nhận thao tác</h3>
+                <p id="confirmModalBody" class="text-xs sm:text-sm text-slate-600 dark:text-slate-300"></p>
+            </div>
+            <div class="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-end gap-2">
+                <button id="btnConfirmCancel" type="button" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-200/80 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer">Hủy bỏ</button>
+                <button id="btnConfirmProceed" type="button" class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer">Xác nhận xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TOAST CONTAINER ==================== -->
+    <div id="toastContainer" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,460px)] flex flex-col gap-2 pointer-events-none" aria-live="polite"></div>
+
+    <!-- ==================== APP ENTRYPOINT ==================== -->
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
