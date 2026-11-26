@@ -211,10 +211,15 @@ export class PhysicsSourceHarvester {
                 this.hfMetaCache.set(cacheKey, { ...meta, numRows: data.num_rows_total });
             }
 
+            const serverFigFiltered = Number(data.filteredMissingFigures || 0);
+            if (serverFigFiltered > 0) {
+                this.vault.sessionMissingFigureRejected = (this.vault.sessionMissingFigureRejected || 0) + serverFigFiltered;
+            }
+
             const rows = Array.isArray(data.rows) ? csprngSample(data.rows, data.rows.length) : [];
             let dupSkip = 0;
             let banned2006Skip = 0;
-            let figSkip = 0;
+            let figSkip = serverFigFiltered;
 
             for (const item of rows) {
                 const rowIdx = item.row_idx ?? offset + collected.length;
@@ -228,15 +233,16 @@ export class PhysicsSourceHarvester {
                 const extracted = extractProblemFromHfRow(item.row);
                 if (!extracted) continue;
 
-                if (containsBanned2006Physics(extracted.questionOnly)) {
+                if (containsBanned2006Physics(extracted.combinedText)) {
                     banned2006Skip++;
                     this.vault.sessionCurriculumRejected = (this.vault.sessionCurriculumRejected || 0) + 1;
                     continue;
                 }
 
-                // Skip image-dependent seeds that mention "hình vẽ bên" without textual data
-                if (!detectMissingFigureReference(extracted.questionOnly, "").ok) {
+                // Layer 1 strict seed filter: reject any record referencing missing figures/graphs/diagrams/images
+                if (!detectMissingFigureReference(extracted.combinedText, "", { strictSeed: true }).ok) {
                     figSkip++;
+                    this.vault.sessionMissingFigureRejected = (this.vault.sessionMissingFigureRejected || 0) + 1;
                     continue;
                 }
 
@@ -252,7 +258,7 @@ export class PhysicsSourceHarvester {
             }
 
             this.onLog(
-                `[${flag} ${dsConfig.shortLabel}] Nhận ${collected.length} câu mới (chặn ${dupSkip} trùng, loại ${banned2006Skip} câu CT 2006${figSkip ? `, bỏ ${figSkip} câu thiếu hình` : ""}).`,
+                `[${flag} ${dsConfig.shortLabel}] Nhận ${collected.length} câu mới (chặn ${dupSkip} trùng, loại ${banned2006Skip} câu CT 2006, lọc ${figSkip} câu thiếu hình).`,
                 collected.length > 0 ? "success" : "warn"
             );
             return collected;
@@ -283,9 +289,14 @@ export class PhysicsSourceHarvester {
                     const res = await this.smartFetch(url, 7500);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
+                    const serverFigFiltered = Number(data.filteredMissingFigures || 0);
+                    if (serverFigFiltered > 0) {
+                        this.vault.sessionMissingFigureRejected = (this.vault.sessionMissingFigureRejected || 0) + serverFigFiltered;
+                    }
                     const items = Array.isArray(data.items) ? data.items : [];
                     let dupSkip = 0;
                     let banned2006Skip = 0;
+                    let figSkip = serverFigFiltered;
 
                     for (const q of items) {
                         const sourceId = `PSE:${q.question_id}`;
@@ -294,13 +305,25 @@ export class PhysicsSourceHarvester {
                             this.vault.sessionDuplicatesBlocked++;
                             continue;
                         }
-                        const bodyPlain = stripHtmlToPlainPhysics(q.body || "");
+                        const rawHtmlBody = String(q.body || "");
+                        const bodyPlain = stripHtmlToPlainPhysics(rawHtmlBody);
                         if (bodyPlain.length < 30) continue;
+
+                        const rawCheck = `${q.title || ""}\n${rawHtmlBody}`;
                         const fullCheck = `${q.title || ""} ${bodyPlain}`;
                         const hasBannedTag = Array.isArray(q.tags) && q.tags.some((t) => bannedSeTags.includes(t));
                         if (hasBannedTag || containsBanned2006Physics(fullCheck)) {
                             banned2006Skip++;
                             this.vault.sessionCurriculumRejected = (this.vault.sessionCurriculumRejected || 0) + 1;
+                            continue;
+                        }
+                        // Layer 1 strict seed filter: catch <img tags in raw HTML and English figure/diagram references
+                        if (
+                            !detectMissingFigureReference(rawCheck, "", { strictSeed: true }).ok ||
+                            !detectMissingFigureReference(fullCheck, "", { strictSeed: true }).ok
+                        ) {
+                            figSkip++;
+                            this.vault.sessionMissingFigureRejected = (this.vault.sessionMissingFigureRejected || 0) + 1;
                             continue;
                         }
                         batch.push({
@@ -313,7 +336,10 @@ export class PhysicsSourceHarvester {
                         });
                         if (batch.length >= neededCount) break;
                     }
-                    this.onLog(`[🌐 Physics SE] Tag "${tag}": lấy ${batch.length} câu (chặn ${dupSkip} trùng, loại ${banned2006Skip} câu CT 2006).`, "success");
+                    this.onLog(
+                        `[🌐 Physics SE] Tag "${tag}": lấy ${batch.length} câu (chặn ${dupSkip} trùng, loại ${banned2006Skip} câu CT 2006, lọc ${figSkip} câu thiếu hình).`,
+                        "success"
+                    );
                 } catch (err) {
                     this.onLog(`[🌐 Physics SE] Tag "${tag}" tạm giới hạn (${err.message}).`, "warn");
                 }

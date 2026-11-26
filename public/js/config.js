@@ -292,10 +292,10 @@ QUY TẮC BẮT BUỘC TUYỆT ĐỐI:
    Luôn tính toán thống nhất theo bảng hằng số đầu đề:
    $R = 8,31\\,\\text{J/(mol}\\cdot\\text{K)}$, $N_A = 6,02\\cdot 10^{23}\\,\\text{mol}^{-1}$, $k = 1,38\\cdot 10^{-23}\\,\\text{J/K}$, $e = 1,6\\cdot 10^{-19}\\,\\text{C}$, $c = 3\\cdot 10^8\\,\\text{m/s}$, $1\\,\\text{amu} = 931,5\\,\\text{MeV}/c^2$, $T(\\text{K}) = t(^\\circ\\text{C}) + 273$.
 
-3. CHỐNG LỖI "THIẾU HÌNH VẼ" & ĐỒ THỊ SVG NỘI TUYẾN:
-   - TUYỆT ĐỐI KHÔNG viết các cụm từ "như hình vẽ bên", "quan sát hình vẽ sau", "đồ thị hình bên", "sơ đồ bên dưới" NẾU KHÔNG cung cấp mã hình vẽ SVG nội tuyến trong trường \`svgFigure\`.
-   - Với câu về đồ thị hoặc thí nghiệm: hoặc cung cấp dữ liệu tường minh bằng bảng số liệu/phương trình ngay trong đề, HOẶC tự tạo mã \`svgFigure\` là 1 chuỗi \`<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg">...</svg>\` gọn đẹp, có trục tọa độ mũi tên, vạch chia rõ số liệu, nhãn đại lượng + đơn vị SI (dùng màu tương phản rõ trên cả nền sáng và nền tối như \`#0284c7\`, \`#059669\`, \`#d97706\`, \`currentColor\`). KHÔNG dùng thẻ \`<script>\` hay thuộc tính sự kiện trong SVG.
-   - Nếu câu không cần hình vẽ, để \`svgFigure\` là chuỗi rỗng \`""\` và diễn đạt tự đủ hoàn toàn bằng chữ, phương trình hoặc bảng số liệu.
+3. QUY TẮC BẮT BUỘC CHỐNG LỖI "THIẾU HÌNH VẼ / ĐỒ THỊ / BẢNG BIẾN THIÊN":
+   - TUYỆT ĐỐI KHÔNG viết bất kỳ cụm từ nào tham chiếu tới hình ảnh không tồn tại trong đề dẫn, phương án A–D hay mệnh đề a–d, ví dụ CẤM: "như hình vẽ bên", "hình vẽ dưới đây", "cho hình vẽ sau", "hình bên", "đồ thị hình bên", "đồ thị sau", "quan sát hình", "mạch điện bên", "sơ đồ bên", "bảng biến thiên sau", "bảng biến thiên dưới đây", "as shown in the figure", "in the diagram", "the graph below", "\\includegraphics", "[asy]", "![".
+   - Nếu ra câu hỏi về hàm số, đồ thị, hình học, mạch điện hoặc thí nghiệm: BẮT BUỘC cung cấp đầy đủ dữ kiện tự thân ngay trong đề bằng **công thức, phương trình, tọa độ các điểm, hoặc bảng số liệu Markdown (\`| Đại lượng | Giá trị 1 | Giá trị 2 |\`) / LaTeX tường minh** để thí sinh giải được hoàn toàn mà không cần nhìn hình.
+   - Mặc định để \`svgFigure: ""\` và \`figureCaption: ""\`. Chỉ điền \`svgFigure\` khi tự tạo đầy đủ mã \`<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg">...</svg>\` hoàn chỉnh có trục tọa độ, số liệu và đơn vị rõ ràng (không có \`<script>\` hay thuộc tính sự kiện); nếu \`svgFigure\` rỗng thì TUYỆT ĐỐI không nhắc bất cứ từ nào về hình/đồ thị bên dưới/bên cạnh.
 
 4. ĐỊNH DẠNG LATEX, ĐƠN VỊ SI & MẸO CASIO:
    - MỌI công thức, đại lượng và đơn vị Vật lý đặt chuẩn trong \`$...$\` hoặc \`$$...$$\`. Thoát dấu gạch chéo ngược chuẩn JSON (VD: \`\\\\dfrac{a}{b}\`, \`\\\\cdot 10^{-3}\`, \`\\\\text{J/(kg}\\\\cdot\\\\text{K)}\`, \`^\\\\circ\\\\text{C}\`).

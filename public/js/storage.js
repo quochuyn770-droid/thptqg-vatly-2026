@@ -99,6 +99,7 @@ export class VaultStorageManager {
             shingleEntries: [],
             totalDuplicatesBlocked: 0,
             totalCurriculumRejected: 0,
+            totalMissingFigureRejected: 0,
             sessionDuplicatesBlocked: 0,
             sessionCurriculumRejected: 0,
             sessionMissingFigureRejected: 0
@@ -186,6 +187,7 @@ export class VaultStorageManager {
         this.vault.shingleEntries = [];
         this.vault.totalDuplicatesBlocked = 0;
         this.vault.totalCurriculumRejected = 0;
+        this.vault.totalMissingFigureRejected = 0;
         this.vault.sessionDuplicatesBlocked = 0;
         this.vault.sessionCurriculumRejected = 0;
         this.vault.sessionMissingFigureRejected = 0;
@@ -200,11 +202,13 @@ export class VaultStorageManager {
 
         let fpDupSum = 0;
         let fpCurrSum = 0;
+        let fpFigSum = 0;
 
         for (const fp of this.vault.fingerprintDocs.values()) {
             if (!fp || fp.vaultKey !== this.activeVaultKey) continue;
             fpDupSum += Number(fp.duplicatesBlocked || 0);
             fpCurrSum += Number(fp.curriculumRejected || fp.complexRejected || 0);
+            fpFigSum += Number(fp.missingFigureRejected || 0);
 
             for (const sid of Array.isArray(fp.sourceIds) ? fp.sourceIds : []) {
                 if (!sid) continue;
@@ -255,6 +259,7 @@ export class VaultStorageManager {
 
         this.vault.totalDuplicatesBlocked = Math.max(this.vault.totalDuplicatesBlocked, fpDupSum);
         this.vault.totalCurriculumRejected = Math.max(this.vault.totalCurriculumRejected, fpCurrSum);
+        this.vault.totalMissingFigureRejected = Math.max(this.vault.totalMissingFigureRejected, fpFigSum);
     }
 
     async loadLocalForActiveVault() {
@@ -274,6 +279,7 @@ export class VaultStorageManager {
         if (savedMeta && savedMeta.value) {
             this.vault.totalDuplicatesBlocked = Number(savedMeta.value.totalDuplicatesBlocked || 0);
             this.vault.totalCurriculumRejected = Number(savedMeta.value.totalCurriculumRejected || 0);
+            this.vault.totalMissingFigureRejected = Number(savedMeta.value.totalMissingFigureRejected || 0);
         }
         this.rebuildInMemoryIndexes();
         this.onChange();
@@ -504,6 +510,7 @@ export class VaultStorageManager {
                 const m = metaSnap.data();
                 this.vault.totalDuplicatesBlocked = Math.max(this.vault.totalDuplicatesBlocked, Number(m.totalDuplicatesBlocked || 0));
                 this.vault.totalCurriculumRejected = Math.max(this.vault.totalCurriculumRejected, Number(m.totalCurriculumRejected || 0));
+                this.vault.totalMissingFigureRejected = Math.max(this.vault.totalMissingFigureRejected, Number(m.totalMissingFigureRejected || 0));
             }
 
             this.rebuildInMemoryIndexes();
@@ -581,6 +588,7 @@ export class VaultStorageManager {
                     const m = docSnap.data();
                     this.vault.totalDuplicatesBlocked = Math.max(this.vault.totalDuplicatesBlocked, Number(m.totalDuplicatesBlocked || 0));
                     this.vault.totalCurriculumRejected = Math.max(this.vault.totalCurriculumRejected, Number(m.totalCurriculumRejected || 0));
+                    this.vault.totalMissingFigureRejected = Math.max(this.vault.totalMissingFigureRejected, Number(m.totalMissingFigureRejected || 0));
                     this.onChange();
                 }
             },
@@ -627,6 +635,7 @@ export class VaultStorageManager {
         this.vault.fingerprintDocs.set(fpDocId, cleanFp);
         this.vault.totalDuplicatesBlocked += Number(cleanFp.duplicatesBlocked || 0);
         this.vault.totalCurriculumRejected += Number(cleanFp.curriculumRejected || 0);
+        this.vault.totalMissingFigureRejected += Number(cleanFp.missingFigureRejected || 0);
         this.rebuildInMemoryIndexes();
 
         await this.idbPut("exams", cleanExam);
@@ -636,6 +645,7 @@ export class VaultStorageManager {
             value: {
                 totalDuplicatesBlocked: this.vault.totalDuplicatesBlocked,
                 totalCurriculumRejected: this.vault.totalCurriculumRejected,
+                totalMissingFigureRejected: this.vault.totalMissingFigureRejected,
                 lastUpdatedAt: Date.now()
             }
         });
@@ -653,6 +663,7 @@ export class VaultStorageManager {
                         lastUpdatedAt: Date.now(),
                         totalDuplicatesBlocked: this.vault.totalDuplicatesBlocked,
                         totalCurriculumRejected: this.vault.totalCurriculumRejected,
+                        totalMissingFigureRejected: this.vault.totalMissingFigureRejected,
                         preferredPriority
                     })
                 );

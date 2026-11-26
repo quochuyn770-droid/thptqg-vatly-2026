@@ -212,32 +212,146 @@ export function hasExplicitDataTable(text) {
 }
 
 /**
- * Anti-"Missing Figure" Guard:
- * Rejects any question that says "như hình vẽ bên", "quan sát đồ thị sau", "hình bên", etc.
- * when it has NO valid inline SVG diagram and NO explicit data table.
+ * Raw image/diagram markup patterns — ALWAYS rejected even if an SVG or table exists.
  */
-const MISSING_FIGURE_PATTERNS = [
-    /(?:như|theo|ở|từ|trên|trong|xem|quan\s+sát)\s+(?:hình\s+vẽ\s+bên|hình\s+bên|hình\s+vẽ\s+sau|hình\s+vẽ\s+dưới\s+đây|hình\s+dưới\s+đây|hình\s+sau|đồ\s+thị\s+bên|đồ\s+thị\s+hình\s+bên|đồ\s+thị\s+sau|đồ\s+thị\s+dưới\s+đây|sơ\s+đồ\s+bên|sơ\s+đồ\s+hình\s+bên|sơ\s+đồ\s+dưới\s+đây)/i,
-    /\b(?:hình\s+vẽ\s+bên|đồ\s+thị\s+hình\s+bên|như\s+hình\s+vẽ)\b/i,
-    /\b(?:shown\s+in\s+the\s+(?:figure|diagram|graph)|figure\s+below|diagram\s+below|graph\s+below|following\s+(?:figure|diagram|graph))\b/i
+const RAW_IMAGE_MARKUP_PATTERNS = [
+    { label: "\\includegraphics", re: /\\includegraphics/i },
+    { label: "[asy]", re: /\[asy\]/i },
+    { label: "![", re: /!\[/ },
+    { label: "<img", re: /<img\b/i }
 ];
 
-export function detectMissingFigureReference(text, svgFigure = "") {
-    if (!text) return { ok: true, reason: "" };
-    const cleanSvg = sanitizeInlineSvg(svgFigure);
-    if (cleanSvg) return { ok: true, reason: "" };
-    if (hasExplicitDataTable(text)) return { ok: true, reason: "" };
+/**
+ * Missing figure / diagram / graph / circuit reference patterns (Vietnamese & English).
+ * Rejected unless a genuine sanitized inline SVG figure is actually present (NEVER bypassed by a text table!).
+ */
+const MISSING_FIGURE_PATTERNS = [
+    // Vietnamese figure, graph, circuit, diagram references
+    { label: "hình vẽ", re: /hình\s+vẽ/i },
+    { label: "hình bên", re: /hình\s+bên/i },
+    { label: "hình dưới", re: /hình\s+dưới/i },
+    { label: "hình sau", re: /(?:như|cho|ở|theo|từ|xem|quan\s+sát|trên)\s+hình\s+sau|\bhình\s+sau\s+đây/i },
+    { label: "hình trên", re: /(?:như|ở|theo|từ|xem|quan\s+sát|trên)\s+hình\s+trên/i },
+    { label: "như hình", re: /như\s+hình/i },
+    { label: "quan sát hình", re: /quan\s+sát\s+hình/i },
+    { label: "đồ thị bên", re: /đồ\s+thị\s+(?:hình\s+)?bên/i },
+    { label: "đồ thị sau", re: /đồ\s+thị\s+(?:như\s+hình\s+)?(?:sau|dưới(?:\s+đây)?|trên)/i },
+    { label: "quan sát đồ thị", re: /quan\s+sát\s+đồ\s+thị/i },
+    { label: "mạch điện bên", re: /(?:sơ\s+đồ\s+)?mạch\s+điện\s+(?:hình\s+)?(?:bên|dưới(?:\s+đây)?|sau|như\s+hình)/i },
+    { label: "sơ đồ bên", re: /sơ\s+đồ\s+(?:hình\s+)?(?:bên|dưới(?:\s+đây)?|sau)/i },
+    { label: "hình số", re: /(?:như|theo|ở|từ|trên|trong|xem|cho|tại|nhìn)\s+hình\s+(?:[1-9]\d*|[a-d]\b)/i },
+    // English figure / diagram / graph references
+    { label: "as shown in the figure", re: /(?:as\s+)?shown\s+in\s+(?:the\s+)?fig(?:ure|\.)/i },
+    { label: "in the diagram", re: /(?:in|from|on|see|shown\s+in)\s+the\s+diagram/i },
+    { label: "the graph below", re: /(?:the\s+)?graph\s+(?:below|above|shown|shows)|following\s+graph/i },
+    { label: "the figure shows", re: /(?:the\s+)?fig(?:ure|\.)\s+(?:shows|below|above|illustrates|depicts)|(?:see|refer\s+to|in|from)\s+(?:the\s+)?fig(?:ure|\.)|following\s+(?:figure|diagram)/i },
+    { label: "diagram below", re: /diagram\s+(?:below|above|shows|shown)|(?:picture|circuit)\s+(?:below|shown)/i }
+];
 
+/**
+ * Missing variation-table references ("bảng biến thiên sau/dưới đây/bên") — rejected if no explicit table or SVG exists.
+ */
+const MISSING_VARIATION_TABLE_PATTERNS = [
+    { label: "bảng biến thiên", re: /bảng\s+biến\s+thiên\s+(?:sau|dưới(?:\s+đây)?|bên|như\s+hình|trên)|cho\s+bảng\s+biến\s+thiên/i }
+];
+
+/**
+ * Anti-"Missing Figure" Guard (used in Layer 1 Harvester & Layer 3 Post-Generation Validator):
+ * - Always rejects raw image markup (\includegraphics, [asy], ![, <img).
+ * - Rejects Vietnamese & English figure/graph/circuit references whenever no valid sanitized inline SVG exists.
+ * - Rejects missing variation-table references whenever neither a valid SVG nor an explicit data table exists.
+ */
+export function detectMissingFigureReference(text, svgFigure = "", { strictSeed = false, hasParentTable = false } = {}) {
+    if (!text) return { ok: true, reason: "", matchedPhrase: "" };
     const normalized = String(text).normalize("NFC");
-    for (const re of MISSING_FIGURE_PATTERNS) {
-        if (re.test(normalized)) {
+
+    for (const rule of RAW_IMAGE_MARKUP_PATTERNS) {
+        const m = normalized.match(rule.re);
+        if (m) {
+            const phrase = m[0] || rule.label;
             return {
                 ok: false,
-                reason: "Vi phạm chống lỗi thiếu hình vẽ (nhắc tới hình/đồ thị nhưng không có SVG hoặc bảng số liệu)"
+                matchedPhrase: phrase,
+                reason: `Phát hiện mã nhúng hình ảnh bị khuyết ("${phrase}")`
             };
         }
     }
-    return { ok: true, reason: "" };
+
+    const cleanSvg = strictSeed ? "" : sanitizeInlineSvg(svgFigure);
+    if (!cleanSvg) {
+        for (const rule of MISSING_FIGURE_PATTERNS) {
+            const m = normalized.match(rule.re);
+            if (m) {
+                const phrase = m[0] || rule.label;
+                return {
+                    ok: false,
+                    matchedPhrase: phrase,
+                    reason: `Nhắc tới hình/đồ thị bị khuyết ("${phrase}") nhưng không có hình hiển thị`
+                };
+            }
+        }
+    }
+
+    if (strictSeed || (!cleanSvg && !hasParentTable && !hasExplicitDataTable(normalized))) {
+        for (const rule of MISSING_VARIATION_TABLE_PATTERNS) {
+            const m = normalized.match(rule.re);
+            if (m) {
+                const phrase = m[0] || rule.label;
+                return {
+                    ok: false,
+                    matchedPhrase: phrase,
+                    reason: `Nhắc tới bảng biến thiên bị khuyết ("${phrase}")`
+                };
+            }
+        }
+    }
+
+    return { ok: true, reason: "", matchedPhrase: "" };
+}
+
+export function containsMissingFigureReference(text, svgFigure = "", options = {}) {
+    return !detectMissingFigureReference(text, svgFigure, options).ok;
+}
+
+/**
+ * Layer 3 Post-Generation Validator:
+ * Scans stemLatex, all options (A-D), and all True/False statements of an AI-generated question.
+ */
+export function validateQuestionMissingFigures(question, partKey = "part1") {
+    if (!question || typeof question !== "object") {
+        return { ok: true, reason: "", matchedPhrase: "", field: "" };
+    }
+    const svg = question.svgFigure || "";
+    const stemHasTable = hasExplicitDataTable(question.stemLatex || "");
+    const fieldsToCheck = [{ name: "đề dẫn", text: question.stemLatex || "" }];
+
+    if (partKey === "part1") {
+        for (const optKey of ["optionA", "optionB", "optionC", "optionD"]) {
+            if (question[optKey]) {
+                fieldsToCheck.push({ name: `phương án ${optKey.slice(-1)}`, text: question[optKey] });
+            }
+        }
+    } else if (partKey === "part2" && Array.isArray(question.statements)) {
+        for (const st of question.statements) {
+            if (st && st.statementLatex) {
+                fieldsToCheck.push({ name: `mệnh đề ${st.label || ""})`, text: st.statementLatex });
+            }
+        }
+    }
+
+    for (const item of fieldsToCheck) {
+        const res = detectMissingFigureReference(item.text, svg, { hasParentTable: stemHasTable });
+        if (!res.ok) {
+            return {
+                ok: false,
+                matchedPhrase: res.matchedPhrase,
+                field: item.name,
+                reason: `Lỗi thiếu hình tại ${item.name}: ${res.reason}`
+            };
+        }
+    }
+
+    return { ok: true, reason: "", matchedPhrase: "", field: "" };
 }
 
 export function isVietnameseSourceId(sourceId = "") {
@@ -287,7 +401,7 @@ export function sanitizeShortAnswer(raw) {
 /**
  * Evaluates a candidate Physics question against:
  * 1) GDPT 2018 Banned 2006 Curriculum Filter
- * 2) Anti-Missing-Figure Guard
+ * 2) Anti-Missing-Figure Guard (stem, options, statements)
  * 3) SHA-256 exact fingerprint check (vault + current exam batch)
  * 4) 3-Gram Jaccard (> 65%) near-duplicate check (vault + current exam batch)
  */
@@ -295,20 +409,27 @@ export async function evaluateQuestionIntegrity(questionText, vault, batchHashes
     const bannedCheck = detectBanned2006Physics(questionText);
     if (bannedCheck.banned) {
         vault.sessionCurriculumRejected = (vault.sessionCurriculumRejected || 0) + 1;
-        return { ok: false, reason: `Vi phạm GDPT 2018 (${bannedCheck.reason})` };
+        return { ok: false, violationType: "curriculum_2006", reason: `Vi phạm GDPT 2018 (${bannedCheck.reason})` };
     }
 
-    const figCheck = detectMissingFigureReference(questionText, options.svgFigure || "");
+    const figCheck = options.question
+        ? validateQuestionMissingFigures(options.question, options.partKey || "part1")
+        : detectMissingFigureReference(questionText, options.svgFigure || "");
     if (!figCheck.ok) {
         vault.sessionMissingFigureRejected = (vault.sessionMissingFigureRejected || 0) + 1;
-        return { ok: false, reason: figCheck.reason };
+        return {
+            ok: false,
+            violationType: "missing_figure",
+            matchedPhrase: figCheck.matchedPhrase || "",
+            reason: figCheck.reason
+        };
     }
 
     const normText = normalizeTextForHash(questionText);
     const hash = await sha256Hex(questionText);
     if (vault.hashes.has(hash) || batchHashes.has(hash)) {
         vault.sessionDuplicatesBlocked++;
-        return { ok: false, reason: `Trùng khớp SHA-256 tuyệt đối (${hash.slice(0, 10)})` };
+        return { ok: false, violationType: "duplicate", reason: `Trùng khớp SHA-256 tuyệt đối (${hash.slice(0, 10)})` };
     }
 
     const shingles = extractShinglesFromNormalized(normText, 3);
@@ -316,14 +437,14 @@ export async function evaluateQuestionIntegrity(questionText, vault, batchHashes
         const sim = jaccardSimilarity(shingles, entry.shingles);
         if (sim > 0.65) {
             vault.sessionDuplicatesBlocked++;
-            return { ok: false, reason: `Tương đồng 3-Gram Jaccard ${(sim * 100).toFixed(1)}% > 65%` };
+            return { ok: false, violationType: "duplicate", reason: `Tương đồng 3-Gram Jaccard ${(sim * 100).toFixed(1)}% > 65%` };
         }
     }
     for (const other of batchShingles) {
         const sim = jaccardSimilarity(shingles, other);
         if (sim > 0.65) {
             vault.sessionDuplicatesBlocked++;
-            return { ok: false, reason: `Trùng nội bộ trong cùng đề (${(sim * 100).toFixed(1)}%)` };
+            return { ok: false, violationType: "duplicate", reason: `Trùng nội bộ trong cùng đề (${(sim * 100).toFixed(1)}%)` };
         }
     }
 

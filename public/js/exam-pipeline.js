@@ -150,7 +150,7 @@ ${topicsList.map((t, i) => `- Câu ${startNum + i}: ${t}`).join("\n")}
 
 LƯU Ý QUAN TRỌNG:
 - 0% nội dung chương trình 2006 (KHÔNG RLC nối tiếp phức tạp, KHÔNG giản đồ Fresnel, KHÔNG mạch dao động LC, KHÔNG mẫu nguyên tử Bo).
-- TUYỆT ĐỐI KHÔNG viết "như hình vẽ bên" hoặc "quan sát đồ thị sau" trừ khi câu đó có kèm mã đồ thị/hình vẽ hợp lệ trong trường \`svgFigure\` (nếu không cần hình, để \`svgFigure: ""\` và cho số liệu/phương trình tường minh).
+- TUYỆT ĐỐI KHÔNG viết các cụm từ nhắc hình vẽ không tồn tại ("như hình vẽ bên", "hình vẽ dưới đây", "đồ thị hình bên", "đồ thị sau", "mạch điện bên", "bảng biến thiên sau", "cho hình vẽ sau"...). Mọi bài toán đồ thị, mạch điện hay thí nghiệm phải cung cấp đầy đủ dữ kiện tự thân bằng công thức, phương trình, tọa độ hoặc bảng số liệu tường minh và để \`svgFigure: ""\`.
 - Trong \`solutionLatex\`, trình bày đổi đơn vị SI ngắn gọn và gợi ý bấm Casio fx-580VN X khi có phép tính hằng số/đổi đơn vị.
 - Nội dung đã có trong kho lịch sử (KHÔNG lặp lại): ${avoidPreviews.slice(0, 10).join(" | ") || "Không có"}.
 
@@ -196,14 +196,14 @@ ${formatSeedBlock(seeds)}`;
 export async function compilePart2(aiClient, seeds, diffCfg, avoidPreviews) {
     const prompt = `Biên soạn ĐÚNG 4 câu hỏi PHẦN II (Trắc nghiệm Đúng/Sai) đánh số từ Câu 1 đến Câu 4 chuẩn THPTQG Vật Lý 2026 (GDPT 2018 — QĐ 764/QĐ-BGDĐT).
 Mức độ: ${diffCfg.label} — ${diffCfg.guidance}
-Phân bổ bắt buộc 4 câu trọng tâm Lớp 12 (mỗi câu gồm đề dẫn thí nghiệm / bảng số liệu / tình huống thực tế và ĐÚNG 4 mệnh đề a, b, c, d phân hóa từ Biết → Hiểu → Vận dụng):
-- Câu 1: Vật lí nhiệt (thí nghiệm đo nhiệt dung riêng / nhiệt nóng chảy riêng / nhiệt hóa hơi riêng hoặc quá trình đun nóng chuyển thể kèm bảng số liệu hoặc đồ thị nhiệt độ theo thời gian bằng SVG nội tuyến \`svgFigure\`).
-- Câu 2: Khí lí tưởng (chu trình biến đổi trạng thái hoặc thí nghiệm kiểm chứng định luật khí lí tưởng kèm bảng số liệu tường minh hoặc đồ thị $p-V$ / $p-T$ bằng SVG nội tuyến \`svgFigure\`).
-- Câu 3: Từ trường & Cảm ứng điện từ / Đại cương dòng điện xoay chiều (thí nghiệm lực từ cân bằng thanh dẫn, khung dây quay trong từ trường đều hoặc máy biến áp lí tưởng — TUYỆT ĐỐI KHÔNG mạch RLC nối tiếp hay giản đồ Fresnel).
-- Câu 4: Vật lí hạt nhân & Phóng xạ (ứng dụng đồng vị phóng xạ trong y học / khảo cổ / nhà máy điện hạt nhân kèm bảng số liệu hoặc đồ thị phân rã bằng SVG nội tuyến \`svgFigure\` — TUYỆT ĐỐI KHÔNG mẫu nguyên tử Bo).
+Phân bổ bắt buộc 4 câu trọng tâm Lớp 12 (mỗi câu gồm đề dẫn thí nghiệm / bảng số liệu tường minh / phương trình hoặc tình huống thực tế tự đủ dữ kiện và ĐÚNG 4 mệnh đề a, b, c, d phân hóa từ Biết → Hiểu → Vận dụng):
+- Câu 1: Vật lí nhiệt (thí nghiệm đo nhiệt dung riêng / nhiệt nóng chảy riêng / nhiệt hóa hơi riêng hoặc quá trình đun nóng chuyển thể kèm bảng số liệu Markdown tường minh hoặc số liệu cụ thể trong đề).
+- Câu 2: Khí lí tưởng (chu trình biến đổi trạng thái hoặc thí nghiệm kiểm chứng định luật khí lí tưởng kèm bảng số liệu $(p, V, T)$ hoặc tọa độ trạng thái tường minh).
+- Câu 3: Từ trường & Cảm ứng điện từ / Đại cương dòng điện xoay chiều (thí nghiệm lực từ cân bằng thanh dẫn, khung dây quay trong từ trường đều với phương trình từ thông/suất điện động tường minh hoặc máy biến áp lí tưởng — TUYỆT ĐỐI KHÔNG mạch RLC nối tiếp hay giản đồ Fresnel).
+- Câu 4: Vật lí hạt nhân & Phóng xạ (ứng dụng đồng vị phóng xạ trong y học / khảo cổ / nhà máy điện hạt nhân kèm bảng số liệu đo đạc hoặc phương trình phản ứng tường minh — TUYỆT ĐỐI KHÔNG mẫu nguyên tử Bo).
 
 QUY TẮC BẮT BUỘC:
-- Khuyến khích tạo 1–2 đồ thị SVG nội tuyến gọn đẹp trong \`svgFigure\` (\`<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg">...</svg>\`) có trục tọa độ, số liệu rõ ràng; nếu câu nào không vẽ SVG thì PHẢI ghi số liệu tường minh bằng bảng/phương trình và TUYỆT ĐỐI KHÔNG viết "như hình vẽ bên" hay "quan sát đồ thị sau".
+- TUYỆT ĐỐI KHÔNG viết các cụm từ tham chiếu hình ảnh không tồn tại ("như hình vẽ bên", "đồ thị hình bên", "hình vẽ dưới đây", "cho hình vẽ sau", "bảng biến thiên sau", "sơ đồ bên", "mạch điện bên"...). Hãy cung cấp đầy đủ số liệu bằng bảng Markdown (\`| Cột 1 | Cột 2 |\`) hoặc phương trình/tọa độ để thí sinh giải hoàn toàn không cần nhìn hình (mặc định để \`svgFigure: ""\`; chỉ điền \`svgFigure\` nếu thực sự sinh mã \`<svg viewBox="0 0 420 230">...</svg>\` hoàn chỉnh).
 - Trong \`solutionLatex\`, giải thích rõ từng ý a), b), c), d) có đổi đơn vị SI và mẹo bấm Casio fx-580VN X khi phù hợp.
 - Tránh trùng lặp: ${avoidPreviews.slice(0, 8).join(" | ") || "Không có"}.
 
@@ -265,7 +265,7 @@ Phân bổ bắt buộc 6 câu đa dạng chuyên đề:
 QUY TẮC BẮT BUỘC:
 - Đáp số \`shortAnswer\` của MỖI câu PHẢI là số nguyên hoặc số thập phân dùng dấu phẩy ',' có TỐI ĐA 4 KÝ TỰ (tính cả dấu '-' và ','), ví dụ: "12,5", "300", "-2,4", "0,75".
 - Nếu kết quả tính ra là số lẻ, BẮT BUỘC ghi rõ trong đề yêu cầu làm tròn (VD: *"làm tròn kết quả đến chữ số hàng phần mười"* hoặc *"đến hàng đơn vị"*) để đáp số đúng khớp <= 4 ký tự.
-- TUYỆT ĐỐI KHÔNG viết "như hình vẽ bên" hay "đồ thị sau" nếu không cung cấp mã \`svgFigure\` hợp lệ.
+- TUYỆT ĐỐI KHÔNG viết các cụm từ nhắc hình ảnh không tồn tại ("như hình vẽ bên", "hình vẽ dưới đây", "đồ thị hình bên", "đồ thị sau", "bảng biến thiên sau", "mạch điện bên"...). Cung cấp dữ kiện tự thân đầy đủ bằng công thức, phương trình, tọa độ hoặc bảng số liệu tường minh và để \`svgFigure: ""\`.
 - Trong \`solutionLatex\`, trình bày đổi đơn vị SI đầy đủ và mẹo bấm Casio fx-580VN X khi phù hợp.
 - Tránh trùng lặp: ${avoidPreviews.slice(0, 8).join(" | ") || "Không có"}.
 
@@ -308,7 +308,18 @@ ${formatSeedBlock(seeds)}`;
     };
 }
 
-async function regenerateSingleQuestion(aiClient, harvester, partKey, qNum, topicHint, diffCfg, modeKey, onLog, spareSeeds = []) {
+async function regenerateSingleQuestion(
+    aiClient,
+    harvester,
+    partKey,
+    qNum,
+    topicHint,
+    diffCfg,
+    modeKey,
+    onLog,
+    spareSeeds = [],
+    violationReason = ""
+) {
     let seed = Array.isArray(spareSeeds) && spareSeeds.length > 0 ? spareSeeds.shift() : null;
     if (!seed) {
         const freshSeeds = await harvester.harvestSeedsForPart(partKey, 2, modeKey);
@@ -316,10 +327,17 @@ async function regenerateSingleQuestion(aiClient, harvester, partKey, qNum, topi
     }
     onLog(`[Auto-Retry] Kéo hạt giống thay thế ${seed.sourceLabel} cho ${partKey.toUpperCase()} Câu ${qNum}...`, "warn");
 
+    const strictConstraint =
+        `QUY TẮC BẮT BUỘC: Câu trước bị loại vì: ${violationReason || "không đạt kiểm định"}. ` +
+        `Câu mới PHẢI tự đủ dữ kiện hoàn toàn bằng chữ, phương trình, tọa độ hoặc bảng số liệu tường minh; ` +
+        `để svgFigure = ""; TUYỆT ĐỐI KHÔNG viết bất kỳ cụm từ nào nhắc hình vẽ/đồ thị/mạch điện/bảng biến thiên bị thiếu ` +
+        `("hình vẽ", "hình bên", "hình dưới", "đồ thị bên", "đồ thị sau", "như hình", "quan sát hình", "mạch điện bên", "bảng biến thiên sau"); ` +
+        `KHÔNG RLC/Fresnel/LC/Bo.`;
+
     if (partKey === "part1") {
         const res = await aiClient.generate({
             systemInstruction: SYSTEM_INSTRUCTION_PHYSICS_2026,
-            prompt: `Tạo 1 câu hỏi PHẦN I (Trắc nghiệm A, B, C, D) mới hoàn toàn cho Câu ${qNum}, chuyên đề "${topicHint}", mức độ ${diffCfg.label}. TUYỆT ĐỐI KHÔNG RLC/Fresnel/LC/Bo, KHÔNG nhắc "như hình vẽ bên" nếu không có svgFigure hợp lệ. Hạt giống [${seed.sourceLabel}]: ${seed.rawContent}`,
+            prompt: `Tạo 1 câu hỏi PHẦN I (Trắc nghiệm A, B, C, D) mới hoàn toàn cho Câu ${qNum}, chuyên đề "${topicHint}", mức độ ${diffCfg.label}. ${strictConstraint} Hạt giống [${seed.sourceLabel}]: ${seed.rawContent}`,
             responseSchema: {
                 type: "OBJECT",
                 properties: {
@@ -355,7 +373,7 @@ async function regenerateSingleQuestion(aiClient, harvester, partKey, qNum, topi
     if (partKey === "part2") {
         const res = await aiClient.generate({
             systemInstruction: SYSTEM_INSTRUCTION_PHYSICS_2026,
-            prompt: `Tạo 1 câu hỏi PHẦN II (Đúng/Sai gồm đề dẫn thực tế/thí nghiệm và 4 ý a, b, c, d) mới hoàn toàn cho Câu ${qNum}, chuyên đề "${topicHint}", mức độ ${diffCfg.label}. TUYỆT ĐỐI KHÔNG RLC/Fresnel/LC/Bo, KHÔNG nhắc "như hình vẽ bên" nếu không có svgFigure hợp lệ. Hạt giống [${seed.sourceLabel}]: ${seed.rawContent}`,
+            prompt: `Tạo 1 câu hỏi PHẦN II (Đúng/Sai gồm đề dẫn thực tế/bảng số liệu và 4 ý a, b, c, d) mới hoàn toàn cho Câu ${qNum}, chuyên đề "${topicHint}", mức độ ${diffCfg.label}. ${strictConstraint} Hạt giống [${seed.sourceLabel}]: ${seed.rawContent}`,
             responseSchema: {
                 type: "OBJECT",
                 properties: {
@@ -402,7 +420,7 @@ async function regenerateSingleQuestion(aiClient, harvester, partKey, qNum, topi
 
     const res = await aiClient.generate({
         systemInstruction: SYSTEM_INSTRUCTION_PHYSICS_2026,
-        prompt: `Tạo 1 câu hỏi PHẦN III (Trả lời ngắn, đáp số tối đa 4 ký tự dùng dấu phẩy ',', ghi rõ yêu cầu làm tròn nếu số lẻ) mới hoàn toàn cho Câu ${qNum}, chuyên đề "${topicHint}", mức độ ${diffCfg.label}. TUYỆT ĐỐI KHÔNG RLC/Fresnel/LC/Bo, KHÔNG nhắc "như hình vẽ bên" nếu không có svgFigure hợp lệ. Hạt giống [${seed.sourceLabel}]: ${seed.rawContent}`,
+        prompt: `Tạo 1 câu hỏi PHẦN III (Trả lời ngắn, đáp số tối đa 4 ký tự dùng dấu phẩy ',', ghi rõ yêu cầu làm tròn nếu số lẻ) mới hoàn toàn cho Câu ${qNum}, chuyên đề "${topicHint}", mức độ ${diffCfg.label}. ${strictConstraint} Hạt giống [${seed.sourceLabel}]: ${seed.rawContent}`,
         responseSchema: {
             type: "OBJECT",
             properties: {
@@ -446,39 +464,60 @@ async function verifyAndSanitizePart({
 }) {
     const verified = [];
     const lockMeta = [];
+    const maxRegenerations = 2;
 
     for (let i = 0; i < questions.length; i++) {
         let candidate = questions[i];
         let accepted = null;
 
-        for (let retry = 0; retry < 2; retry++) {
+        // Check original + up to 2 regenerated replacements (always verifying each replacement!)
+        for (let attempt = 0; attempt <= maxRegenerations; attempt++) {
             const textBody =
                 partKey === "part2"
                     ? `${candidate.stemLatex} ${(candidate.statements || []).map((s) => s.statementLatex).join(" ")}`
                     : `${candidate.stemLatex} ${candidate.optionA || ""} ${candidate.optionB || ""} ${candidate.optionC || ""} ${candidate.optionD || ""}`;
 
             const check = await evaluateQuestionIntegrity(textBody, vault, batchHashes, batchShingles, {
-                svgFigure: candidate.svgFigure || ""
+                svgFigure: candidate.svgFigure || "",
+                question: candidate,
+                partKey
             });
             if (check.ok) {
                 accepted = { q: candidate, hash: check.hash, normText: check.normText, shingles: check.shingles };
+                if (attempt > 0) {
+                    onLog(`[Đã phục hồi ${partKey.toUpperCase()} Câu ${candidate.number}] Câu thay thế đạt kiểm định 100% sau lần tạo lại #${attempt}.`, "success");
+                }
                 break;
             }
-            onLog(`[Chặn ${partKey.toUpperCase()} Câu ${candidate.number}] ${check.reason} → Tự kéo câu thay thế...`, "warn");
-            try {
-                candidate = await regenerateSingleQuestion(
-                    aiClient,
-                    harvester,
-                    partKey,
-                    candidate.number,
-                    candidate.topic || "Vật Lý GDPT 2018",
-                    diffCfg,
-                    modeKey,
-                    onLog,
-                    spareSeeds
+
+            const tag = check.violationType === "missing_figure" ? "Chặn thiếu hình" : "Chặn";
+            if (attempt < maxRegenerations) {
+                onLog(
+                    `[${tag} ${partKey.toUpperCase()} Câu ${candidate.number}] ${check.reason} → Tự động tạo lại câu thay thế bằng hạt giống khác (lần ${attempt + 1}/${maxRegenerations})...`,
+                    "warn"
                 );
-            } catch {
-                break;
+                try {
+                    candidate = await regenerateSingleQuestion(
+                        aiClient,
+                        harvester,
+                        partKey,
+                        candidate.number,
+                        candidate.topic || "Vật Lý GDPT 2018",
+                        diffCfg,
+                        modeKey,
+                        onLog,
+                        spareSeeds,
+                        check.reason
+                    );
+                } catch (err) {
+                    onLog(`[Auto-Retry lỗi ${partKey.toUpperCase()} Câu ${candidate.number}] ${err.message}`, "error");
+                    break;
+                }
+            } else {
+                onLog(
+                    `[${tag} ${partKey.toUpperCase()} Câu ${candidate.number}] Đã hết ${maxRegenerations} lượt tạo lại (${check.reason}).`,
+                    "warn"
+                );
             }
         }
 
@@ -769,7 +808,8 @@ export async function runFullExamPipeline({
         hashes: allMeta.map((m) => m.hash),
         normalizedTexts: allMeta.map((m) => m.normText),
         duplicatesBlocked: batchDupsBlocked,
-        curriculumRejected: batchCurriculumRejected
+        curriculumRejected: batchCurriculumRejected,
+        missingFigureRejected: batchMissingFigureRejected
     };
 
     await storage.saveExamAndFingerprints(examDoc, fpDoc, priorityMode);
@@ -780,7 +820,7 @@ export async function runFullExamPipeline({
         `Mã đề ${examCode} · 28 câu (50 phút) · 🇻🇳 ${vnSourceIds.length} VN · 🌐 ${intlSourceIds.length} QT · ${svgCount} hình SVG · ${examDoc.aiModelUsed}`
     );
     onLog(
-        `=== HOÀN TẤT MÃ ĐỀ ${examCode} TRONG ${elapsedSec}s (28 câu · Chặn ${batchDupsBlocked} trùng · Loại ${batchCurriculumRejected} câu CT 2006 · ${svgCount} đồ thị SVG) ===`,
+        `=== HOÀN TẤT MÃ ĐỀ ${examCode} TRONG ${elapsedSec}s (28 câu · Chặn ${batchDupsBlocked} trùng · Loại ${batchCurriculumRejected} câu CT 2006 · Chặn ${batchMissingFigureRejected} câu thiếu hình · ${svgCount} đồ thị SVG) ===`,
         "success"
     );
 

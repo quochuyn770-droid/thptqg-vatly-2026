@@ -11,11 +11,15 @@ export default async (req) => {
     const urlObj = new URL(req.url);
     const targetUrl = urlObj.searchParams.get("url") || "";
     const result = await handleHarvestProxyRequest(targetUrl);
+    const headers = {
+        "Content-Type": result.contentType,
+        "Cache-Control": "public, max-age=120"
+    };
+    if (typeof result.filteredMissingFigures === "number") {
+        headers["X-Harvest-Filtered-Missing-Figures"] = String(result.filteredMissingFigures);
+    }
     return new Response(result.body, {
         status: result.status,
-        headers: {
-            "Content-Type": result.contentType,
-            "Cache-Control": "public, max-age=120"
-        }
+        headers
     });
 };

@@ -105,6 +105,60 @@ html.dark .physics-svg-caption {
     color: #94a3b8;
 }
 
+/* --- Rendered Markdown Data Tables (Self-Contained Physics Experiments) --- */
+.physics-table-wrap {
+    margin: 0.7rem 0;
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 0.65rem;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+}
+
+html.dark .physics-table-wrap {
+    border-color: #334155;
+    background: #0f172a;
+}
+
+.physics-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.physics-data-table th,
+.physics-data-table td {
+    padding: 0.45rem 0.7rem;
+    border: 1px solid #cbd5e1;
+    white-space: nowrap;
+}
+
+html.dark .physics-data-table th,
+html.dark .physics-data-table td {
+    border-color: #334155;
+}
+
+.physics-data-table thead th {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+html.dark .physics-data-table thead th {
+    background: #1e293b;
+    color: #f1f5f9;
+}
+
+.physics-data-table tbody tr:nth-child(even) {
+    background: rgba(248, 250, 252, 0.75);
+}
+
+html.dark .physics-data-table tbody tr:nth-child(even) {
+    background: rgba(30, 41, 59, 0.45);
+}
+
 /* --- Physical Constants Banner --- */
 .constants-chip {
     display: inline-flex;
@@ -232,5 +286,19 @@ html.dark .provider-card.active {
         background: #ffffff !important;
         color: #000000 !important;
         break-inside: avoid;
+    }
+
+    .physics-table-wrap {
+        border: 1px solid #000000 !important;
+        background: #ffffff !important;
+        overflow: visible !important;
+        break-inside: avoid;
+    }
+
+    .physics-data-table th,
+    .physics-data-table td {
+        border: 1px solid #000000 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
     }
 }

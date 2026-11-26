@@ -120,10 +120,14 @@ export function createAppServer(env = process.env) {
                 }
                 const targetUrl = reqUrl.searchParams.get("url") || "";
                 const result = await handleHarvestProxyRequest(targetUrl);
-                res.writeHead(result.status, {
+                const headers = {
                     "Content-Type": result.contentType,
                     "Cache-Control": "public, max-age=120"
-                });
+                };
+                if (typeof result.filteredMissingFigures === "number") {
+                    headers["X-Harvest-Filtered-Missing-Figures"] = String(result.filteredMissingFigures);
+                }
+                res.writeHead(result.status, headers);
                 return res.end(result.body);
             }
 

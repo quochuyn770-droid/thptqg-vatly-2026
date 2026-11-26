@@ -8,7 +8,9 @@ import {
     extractGeminiResponse,
     stripInlineThinkTags,
     validateCustomBaseUrl,
-    validateHarvestUrl
+    validateHarvestUrl,
+    detectServerMissingFigureText,
+    filterHarvestPayloadMissingFigures
 } from "../lib/proxy-core.mjs";
 import { createAppServer } from "../server.mjs";
 import {
@@ -20,6 +22,8 @@ import {
     detectBanned2006Physics,
     sanitizeInlineSvg,
     detectMissingFigureReference,
+    containsMissingFigureReference,
+    validateQuestionMissingFigures,
     isVietnameseSourceId,
     sanitizeVaultKey,
     sanitizeShortAnswer,
@@ -33,7 +37,7 @@ import {
     UnifiedAiClient,
     AI_SETTINGS_VERSION
 } from "../public/js/ai-client.js";
-import { PHYSICS_CONSTANTS, STORAGE_KEYS } from "../public/js/config.js";
+import { PHYSICS_CONSTANTS, STORAGE_KEYS, SYSTEM_INSTRUCTION_PHYSICS_2026 } from "../public/js/config.js";
 import { PhysicsSourceHarvester, extractProblemFromHfRow } from "../public/js/harvester.js";
 import { runFullExamPipeline } from "../public/js/exam-pipeline.js";
 import { parseFirebaseConfigInput } from "../public/js/storage.js";
@@ -325,7 +329,8 @@ test("PhysicsSourceHarvester extracts all HF schemas, routes via /api/harvest wh
     const vault = {
         sourceIds: new Set(),
         sessionDuplicatesBlocked: 0,
-        sessionCurriculumRejected: 0
+        sessionCurriculumRejected: 0,
+        sessionMissingFigureRejected: 0
     };
     const harvester = new PhysicsSourceHarvester({
         vault,
@@ -347,8 +352,11 @@ test("PhysicsSourceHarvester extracts all HF schemas, routes via /api/harvest wh
                     row_idx: k + 1,
                     row: { question: `Một mạch RLC nối tiếp số ${k + 1} có cảm kháng 30 Ohm và dung kháng 40 Ohm, tính tổng trở Z.` }
                 })),
-                // Missing-figure seed -> must be filtered out
-                { row_idx: 20, row: { question: "Quan sát đồ thị hình bên, hãy xác định chu kì dao động của vật." } },
+                // Missing-figure seeds -> must be filtered out
+                ...Array.from({ length: 5 }, (_, k) => ({
+                    row_idx: 20 + k,
+                    row: { question: `Quan sát đồ thị hình bên số ${k + 1}, hãy xác định chu kì dao động của vật.` }
+                })),
                 // Valid GDPT 2018 physics seeds
                 ...Array.from({ length: 12 }, (_, i) => ({
                     row_idx: 100 + i,
@@ -363,13 +371,30 @@ test("PhysicsSourceHarvester extracts all HF schemas, routes via /api/harvest wh
             });
         }
         if (decoded.includes("api.stackexchange.com")) {
-            const items = Array.from({ length: 8 }, (_, i) => ({
-                question_id: 7000 + i,
-                title: `Ideal gas thermodynamic process ${i}`,
-                body: `<p>Calculate the internal energy change and heat transferred in an isobaric expansion of ${i + 2} moles of ideal gas.</p>`,
-                tags: ["thermodynamics", "ideal-gas"],
-                link: `https://physics.stackexchange.com/q/${7000 + i}`
-            }));
+            const items = [
+                // Physics SE items with embedded <img> and "as shown in the figure" -> must be dropped
+                {
+                    question_id: 6990,
+                    title: "Magnetic force on wire loop",
+                    body: `<p>Calculate the magnetic flux as shown in the figure below: <img src="https://i.sstatic.net/sample.png" alt="loop"/></p>`,
+                    tags: ["electromagnetism", "magnetic-fields"],
+                    link: "https://physics.stackexchange.com/q/6990"
+                },
+                {
+                    question_id: 6991,
+                    title: "Pressure graph analysis",
+                    body: `<p>Using the graph below, find the work done during the thermodynamic cycle in the diagram.</p>`,
+                    tags: ["thermodynamics", "ideal-gas"],
+                    link: "https://physics.stackexchange.com/q/6991"
+                },
+                ...Array.from({ length: 8 }, (_, i) => ({
+                    question_id: 7000 + i,
+                    title: `Ideal gas thermodynamic process ${i}`,
+                    body: `<p>Calculate the internal energy change and heat transferred in an isobaric expansion of ${i + 2} moles of ideal gas.</p>`,
+                    tags: ["thermodynamics", "ideal-gas"],
+                    link: `https://physics.stackexchange.com/q/${7000 + i}`
+                }))
+            ];
             return new Response(JSON.stringify({ items }), {
                 status: 200,
                 headers: { "Content-Type": "application/json" }
@@ -384,6 +409,15 @@ test("PhysicsSourceHarvester extracts all HF schemas, routes via /api/harvest wh
         assert.equal(res.part2.length, 4);
         assert.equal(res.part3.length, 6);
         assert.ok(vault.sessionCurriculumRejected >= 1, "Expected banned 2006 RLC seed to be rejected during harvest");
+        assert.ok(vault.sessionMissingFigureRejected >= 1, "Expected missing-figure seeds to be rejected during harvest");
+        const allHarvested = [...res.part1, ...res.part2, ...res.part3, ...(res.spare || [])];
+        for (const seed of allHarvested) {
+            assert.equal(
+                containsMissingFigureReference(seed.rawContent, "", { strictSeed: true }),
+                false,
+                `Missing-figure seed leaked into harvest results: ${seed.rawContent}`
+            );
+        }
         assert.ok(requestedUrls.every((u) => u.startsWith("/api/harvest?url=")));
     } finally {
         globalThis.fetch = prevFetch;
@@ -698,3 +732,462 @@ test("AI settings auto-migration and fallback cooldown work identically", async 
     assert.equal(res2.model, "gemini-3.5-flash-lite");
     assert.deepEqual(called, ["gemini-3.5-flash-lite"]);
 });
+
+test("Layer 1 Backend (/api/harvest) filters missing-figure HF rows & Physics SE items without false positives", () => {
+    // Must detect all required Vietnamese, English, and raw image markup triggers
+    const mustBlock = [
+        "Cho mạch điện như hình vẽ bên dưới.",
+        "Xác định áp suất từ hình bên.",
+        "Xét con lắc đặt như hình dưới đây.",
+        "Từ đồ thị bên, tính công của khối khí.",
+        "Dựa vào đồ thị sau, tìm chu kì dao động.",
+        "Một khung dây đặt trong từ trường như hình 2.",
+        "Quan sát hình để xác định chiều dòng điện cảm ứng.",
+        "Cho mạch điện bên có điện trở R = 10 Ohm.",
+        "Cho bảng biến thiên sau của đại lượng vật lí.",
+        "Find the net force as shown in the figure.",
+        "Determine the current in the diagram.",
+        "Based on the graph below, compute work done.",
+        "The figure shows a conducting rod on rails.",
+        "Consider \\includegraphics[width=5cm]{circuit.png} for the loop.",
+        "Draw the path [asy]draw((0,0)--(1,1));[/asy]",
+        "Diagram: ![circuit](https://example.com/fig.png)",
+        "<p>Look at <img src='https://i.sstatic.net/123.png'> carefully.</p>"
+    ];
+    for (const sample of mustBlock) {
+        assert.equal(
+            detectServerMissingFigureText(sample).hasMissingFigure,
+            true,
+            `Backend Layer 1 failed to block: ${sample}`
+        );
+    }
+
+    // Must NOT falsely block self-contained GDPT 2018 physics questions
+    const mustAllow = [
+        "Theo mô hình động học phân tử chất khí, các phân tử chuyển động hỗn loạn không ngừng.",
+        "Một quả cầu hình cầu bán kính R = 5 cm tích điện đều.",
+        "Một khối khí lí tưởng thực hiện quá trình đẳng nhiệt tuân theo phương trình pV = 240 J.",
+        "Trong hệ tọa độ (p, V), trạng thái 1 có (p1 = 10^5 Pa, V1 = 4 lít) biến đổi đẳng áp sang V2 = 8 lít."
+    ];
+    for (const sample of mustAllow) {
+        assert.equal(
+            detectServerMissingFigureText(sample).hasMissingFigure,
+            false,
+            `Backend Layer 1 falsely blocked valid physics text: ${sample}`
+        );
+    }
+
+    // HuggingFace payload filter
+    const hfPayload = JSON.stringify({
+        rows: [
+            { row_idx: 1, row: { question: "Quan sát đồ thị hình bên và tính nhiệt dung riêng." } },
+            { row_idx: 2, row: { question: "Cho mạch điện bên có suất điện động E = 12 V." } },
+            { row_idx: 3, row: { question: "Xét câu hỏi hợp lệ", options: ["A. Xem hình vẽ dưới đây", "B. 5 J"] } },
+            { row_idx: 4, row: { question: "Tính nội năng biến thiên của 2 mol khí lí tưởng khi nhận nhiệt 500 J và sinh công 200 J." } }
+        ],
+        num_rows_total: 4
+    });
+    const hfFiltered = filterHarvestPayloadMissingFigures(hfPayload, "application/json; charset=utf-8");
+    assert.equal(hfFiltered.filteredMissingFigures, 3);
+    const hfParsed = JSON.parse(hfFiltered.body);
+    assert.equal(hfParsed.rows.length, 1);
+    assert.equal(hfParsed.rows[0].row_idx, 4);
+    assert.equal(hfParsed.filteredMissingFigures, 3);
+
+    // Physics Stack Exchange payload filter
+    const sePayload = JSON.stringify({
+        items: [
+            { question_id: 1, title: "Circuit", body: "<p>See <img src='https://i.sstatic.net/x.png'/></p>" },
+            { question_id: 2, title: "Pulley", body: "<p>A mass is suspended as shown in the figure.</p>" },
+            { question_id: 3, title: "Graph", body: "<p>From the graph below, determine entropy.</p>" },
+            { question_id: 4, title: "Isothermal gas", body: "<p>Find the work done by 3 mol of ideal gas expanding from 2 L to 6 L at 300 K.</p>" }
+        ]
+    });
+    const seFiltered = filterHarvestPayloadMissingFigures(sePayload, "application/json");
+    assert.equal(seFiltered.filteredMissingFigures, 3);
+    const seParsed = JSON.parse(seFiltered.body);
+    assert.equal(seParsed.items.length, 1);
+    assert.equal(seParsed.items[0].question_id, 4);
+    assert.equal(seParsed.filteredMissingFigures, 3);
+});
+
+test("Layer 2 System Instruction & Layer 3 Post-Generation Validator catch leaks in stems, options A-D, and Part II statements", () => {
+    // Layer 2: System Instruction explicitly forbids missing-figure phrases & mandates self-contained formulas/tables
+    assert.ok(SYSTEM_INSTRUCTION_PHYSICS_2026.includes("đồ thị hình bên"));
+    assert.ok(SYSTEM_INSTRUCTION_PHYSICS_2026.includes("bảng biến thiên"));
+    assert.ok(SYSTEM_INSTRUCTION_PHYSICS_2026.includes("bảng số liệu Markdown"));
+
+    // Table MUST NOT bypass figure/graph references ("như hình vẽ bên" / "đồ thị hình bên")
+    const fakeTableWithFigurePhrase =
+        "Quan sát đồ thị hình bên với bảng sau:\n| t | 0 | 2 |\n|---|---|\n| T | 20 | 40 |";
+    assert.equal(detectMissingFigureReference(fakeTableWithFigurePhrase, "").ok, false);
+
+    // Raw image markup MUST ALWAYS be rejected even if an SVG is attached!
+    const validSvg = `<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg"><line x1="10" y1="200" x2="300" y2="200" stroke="currentColor"/></svg>`;
+    assert.equal(detectMissingFigureReference("Xem \\includegraphics{fig1.png}", validSvg).ok, false);
+    assert.equal(detectMissingFigureReference("Xem ![graph](x.png)", validSvg).ok, false);
+    assert.equal(detectMissingFigureReference("Xem <img src='a.png'>", validSvg).ok, false);
+    assert.equal(detectMissingFigureReference("Xem [asy]draw((0,0)--(1,1));[/asy]", validSvg).ok, false);
+
+    // Layer 3 validator catches leak hidden inside Part I optionC
+    const badPart1Option = validateQuestionMissingFigures(
+        {
+            stemLatex: "Một chất điểm dao động điều hòa với phương trình $x = 4\\cos(2\\pi t)\\,\\text{cm}$.",
+            svgFigure: "",
+            optionA: "$2\\,\\text{Hz}$",
+            optionB: "$1\\,\\text{Hz}$",
+            optionC: "Đồ thị như hình vẽ dưới đây",
+            optionD: "$4\\,\\text{Hz}$"
+        },
+        "part1"
+    );
+    assert.equal(badPart1Option.ok, false);
+    assert.equal(badPart1Option.field, "phương án C");
+
+    // Layer 3 validator catches missing variation-table leak inside Part II statement b) when no table exists
+    const badPart2Stmt = validateQuestionMissingFigures(
+        {
+            stemLatex: "Một lượng khí lí tưởng thực hiện quá trình biến đổi trạng thái.",
+            svgFigure: "",
+            statements: [
+                { label: "a", statementLatex: "Nhiệt độ tăng gấp đôi.", isTrue: true },
+                { label: "b", statementLatex: "Dựa vào bảng biến thiên sau, áp suất tăng tuyến tính.", isTrue: false },
+                { label: "c", statementLatex: "Nội năng tăng.", isTrue: true },
+                { label: "d", statementLatex: "Khí sinh công dương.", isTrue: false }
+            ]
+        },
+        "part2"
+    );
+    assert.equal(badPart2Stmt.ok, false);
+    assert.equal(badPart2Stmt.field, "mệnh đề b)");
+
+    // Layer 3 validator ALLOWS variation-table reference in Part II statement when stemLatex explicitly provides the table
+    const validPart2WithTable = validateQuestionMissingFigures(
+        {
+            stemLatex: "Cho bảng biến thiên sau:\n| $t$ (s) | $0$ | $2$ | $4$ |\n|---|---|---|---|\n| $T$ (K) | $300$ | $360$ | $420$ |",
+            svgFigure: "",
+            statements: [
+                { label: "a", statementLatex: "Theo bảng biến thiên sau $2\\,\\text{s}$, nhiệt độ tăng $60\\,\\text{K}$.", isTrue: true }
+            ]
+        },
+        "part2"
+    );
+    assert.equal(validPart2WithTable.ok, true);
+});
+
+test("Layer 3 Post-generation Validator in runFullExamPipeline logs [Chặn thiếu hình] and auto-regenerates clean replacements across retries", async () => {
+    const makeSeeds = (prefix, count) =>
+        Array.from({ length: count }, (_, i) => ({
+            sourceId: `tridm/VMLU:figtest_${prefix}_${i}`,
+            sourceLabel: `VMLU #${prefix}_${i}`,
+            sourceLang: "vi",
+            sourceUrl: "https://huggingface.co/datasets/tridm/VMLU",
+            rawContent: `Hạt giống vật lý sạch mẫu ${prefix} số ${i} về nhiệt học, khí lí tưởng, từ trường và hạt nhân.`
+        }));
+
+    const harvester = {
+        harvestAllExamSeeds: async () => ({
+            part1: makeSeeds("p1", 18),
+            part2: makeSeeds("p2", 4),
+            part3: makeSeeds("p3", 6),
+            spare: makeSeeds("spare", 8)
+        }),
+        harvestSeedsForPart: async (partKey, count) => makeSeeds(`regen_${partKey}`, count)
+    };
+
+    let q5RegenAttempts = 0;
+    let q14RegenAttempts = 0;
+    let p2q2RegenAttempts = 0;
+    const logs = [];
+
+    const p1Batch1Stems = [
+        "Xét khối đồng đỏ khối lượng $1,5\\,\\text{kg}$ nóng lên thêm $25\\,\\text{K}$, tìm nhiệt lượng hấp thụ biết nhiệt dung riêng của đồng bằng $380\\,\\text{J/(kg}\\cdot\\text{K)}$.",
+        "Một bình thép kín dung tích $12\\,\\text{lít}$ chứa khí oxi ở $27^\\circ\\text{C}$ và áp suất $200\\,\\text{kPa}$, xác định số mol phân tử khí bên trong bình.",
+        "Một miếng nước đá khối lượng $400\\,\\text{g}$ đang ở $0^\\circ\\text{C}$ chuyển hoàn toàn sang thể lỏng, tính nhiệt lượng cần cung cấp với $\\lambda = 3,34\\cdot 10^5\\,\\text{J/kg}$.",
+        "Đun sôi $0,5\\,\\text{kg}$ nước tinh khiết ở $100^\\circ\\text{C}$ cho bay hơi hết, xác định năng lượng hóa hơi biết $L = 2,26\\cdot 10^6\\,\\text{J/kg}$.",
+        // Inject missing figure leak at Question 5!
+        "Dựa vào đồ thị hình bên, tính công mà khối khí thực hiện trong chu trình kín.",
+        "Một xi lanh có pit-tông di chuyển tự do nén đẳng nhiệt khối khí nitơ từ $8\\,\\text{lít}$ xuống $2\\,\\text{lít}$ với áp suất đầu $1\\,\\text{atm}$, tìm áp suất lúc sau.",
+        "Hơ nóng đẳng áp $3\\,\\text{mol}$ khí heli từ $300\\,\\text{K}$ lên $450\\,\\text{K}$, xác định công khối khí sinh ra khi giãn nở.",
+        "Tính động năng tịnh tiến trung bình của mỗi phân tử khí argon ở nhiệt độ tuyệt đối $400\\,\\text{K}$ theo đơn vị Jun.",
+        "Truyền nhiệt lượng $1200\\,\\text{J}$ cho khí trong bình đồng thời thực hiện công nén $300\\,\\text{J}$, xác định độ biến thiên nội năng theo định luật I nhiệt động lực học."
+    ];
+
+    const p1Batch2Stems = [
+        "Đoạn dây dẫn thẳng dài $0,4\\,\\text{m}$ mang dòng điện $5\\,\\text{A}$ đặt vuông góc cảm ứng từ đều $0,3\\,\\text{T}$, tính lực từ tác dụng lên đoạn dây.",
+        "Khung dây phẳng gồm $200$ vòng diện tích $50\\,\\text{cm}^2$ quay đều trong từ trường $0,1\\,\\text{T}$, xác định từ thông cực đại gửi qua khung.",
+        "Trong chân không, sóng điện từ tần số $150\\,\\text{MHz}$ truyền đi với vận tốc ánh sáng $c$, tìm bước sóng tương ứng.",
+        "Máy biến áp lí tưởng có cuộn sơ cấp $1000$ vòng nối điện áp hiệu dụng $220\\,\\text{V}$ và cuộn thứ cấp $250$ vòng, tính điện áp hiệu dụng đầu ra.",
+        // Question 14: stem is clean, but optionC will carry missing figure leak!
+        "Dòng điện xoay chiều chạy qua điện trở thuần có biểu thức $i = 4\\sqrt{2}\\cos(100\\pi t)\\,\\text{A}$, tìm cường độ hiệu dụng.",
+        "Hạt nhân heli ${}^4_2\\text{He}$ có độ hụt khối $0,0304\\,\\text{amu}$, tính năng lượng liên kết riêng trên mỗi nuclôn.",
+        "Chất phóng xạ poloni có chu kì bán rã $138$ ngày, sau $276$ ngày phần trăm hạt nhân chưa phân rã còn lại bằng bao nhiêu?",
+        "Một con lắc lò xo dao động điều hòa với phương trình $x = 6\\cos(4\\pi t)\\,\\text{cm}$, xác định chu kì dao động của vật nặng.",
+        "Sóng cơ lan truyền trên mặt hồ yên lặng với tốc độ $1,2\\,\\text{m/s}$ và tần số $6\\,\\text{Hz}$, tính khoảng cách giữa hai đỉnh sóng liên tiếp."
+    ];
+
+    const p3Stems = [
+        "Đun nóng $2\\,\\text{kg}$ nhôm từ $25^\\circ\\text{C}$ lên $75^\\circ\\text{C}$ với $c = 880\\,\\text{J/(kg}\\cdot\\text{K)}$, tính nhiệt lượng theo $\\text{kJ}$.",
+        "Một bình chứa $0,5\\,\\text{mol}$ khí lí tưởng ở $300\\,\\text{K}$ có thể tích $6\\,\\text{lít}$, tính áp suất khí theo đơn vị $\\text{kPa}$ (làm tròn phần nguyên).",
+        "Thanh dẫn dài $0,8\\,\\text{m}$ trượt đều vận tốc $5\\,\\text{m/s}$ vuông góc từ trường $0,25\\,\\text{T}$, tìm suất điện động cảm ứng theo Vôn.",
+        "Hạt nhân đơteri có độ hụt khối $0,0024\\,\\text{amu}$, xác định năng lượng liên kết theo $\\text{MeV}$ (làm tròn đến hàng phần mười).",
+        "Hai nguồn sóng kết hợp cùng pha phát bước sóng $4\\,\\text{cm}$, tìm khoảng cách ngắn nhất giữa hai cực đại giao thoa liên tiếp theo $\\text{cm}$.",
+        "Tụ điện phẳng có điện dung $20\\,\\mu\\text{F}$ tích điện ở hiệu điện thế $50\\,\\text{V}$, tính điện tích trên mỗi bản tụ theo $\\text{mC}$."
+    ];
+
+    const p2Fixtures = [
+        {
+            topic: "Vật lí nhiệt",
+            stem: "Nhóm học sinh dùng ấm điện công suất $1500\\,\\text{W}$ đun nóng $1,2\\,\\text{kg}$ nước tinh khiết từ $20^\\circ\\text{C}$ đến khi sôi ở áp suất tiêu chuẩn.",
+            stmts: [
+                { label: "a", statementLatex: "Nhiệt độ sôi của nước ở áp suất chuẩn bằng $373\\,\\text{K}$.", isTrue: true },
+                { label: "b", statementLatex: "Độ tăng nhiệt độ của nước là $80\\,\\text{K}$.", isTrue: true },
+                { label: "c", statementLatex: "Nội năng khối nước giảm dần trong lúc đun.", isTrue: false },
+                { label: "d", statementLatex: "Nhiệt lượng nước thu vào xấp xỉ $403,2\\,\\text{kJ}$.", isTrue: true }
+            ]
+        },
+        {
+            topic: "Khí lí tưởng",
+            stem: "Xét $2\\,\\text{mol}$ khí nitơ đựng trong xi lanh chịu nhiệt thực hiện quá trình đẳng tích từ trạng thái ban đầu $300\\,\\text{K}$.",
+            stmts: [
+                { label: "a", statementLatex: "Thể tích xi lanh giữ nguyên trong suốt quá trình.", isTrue: true },
+                // Inject missing variation-table leak inside Part II Q2 statement b)!
+                { label: "b", statementLatex: "Quan sát bảng biến thiên sau, áp suất đạt cực đại tại $t = 4\\,\\text{s}$.", isTrue: false },
+                { label: "c", statementLatex: "Khối khí không thực hiện công cơ học lên pit-tông.", isTrue: true },
+                { label: "d", statementLatex: "Động năng phân tử tăng khi nhiệt độ tăng.", isTrue: true }
+            ]
+        },
+        {
+            topic: "Từ trường",
+            stem: "Khung dây dẫn đồng hình vuông cạnh $10\\,\\text{cm}$ đặt vuông góc với các đường sức của một nam châm điện đang tăng dần cảm ứng từ.",
+            stmts: [
+                { label: "a", statementLatex: "Diện tích tiết diện khung dây bằng $0,01\\,\\text{m}^2$.", isTrue: true },
+                { label: "b", statementLatex: "Từ thông qua khung biến thiên sinh ra dòng điện cảm ứng.", isTrue: true },
+                { label: "c", statementLatex: "Từ trường cảm ứng cùng chiều với từ trường ngoài khi $B$ tăng.", isTrue: false },
+                { label: "d", statementLatex: "Độ lớn suất điện động tỉ lệ với tốc độ biến thiên từ thông.", isTrue: true }
+            ]
+        },
+        {
+            topic: "Vật lí hạt nhân",
+            stem: "Trong y học hạt nhân, đồng vị phóng xạ I-131 có chu kì bán rã $8$ ngày được dùng để chẩn đoán tuyến giáp với độ phóng xạ ban đầu $400\\,\\text{MBq}$.",
+            stmts: [
+                { label: "a", statementLatex: "Đồng vị I-131 phân rã theo quy luật hàm mũ theo thời gian.", isTrue: true },
+                { label: "b", statementLatex: "Sau $16$ ngày độ phóng xạ giảm còn $100\\,\\text{MBq}$.", isTrue: true },
+                { label: "c", statementLatex: "Chu kì bán rã phụ thuộc mạnh vào nhiệt độ phòng bệnh.", isTrue: false },
+                { label: "d", statementLatex: "Hằng số phóng xạ tỉ lệ nghịch với chu kì bán rã.", isTrue: true }
+            ]
+        }
+    ];
+
+    const aiClient = {
+        getConnectionModeLabel: () => ({ ready: true, mode: "byok", label: "Mock AI", detail: "Test" }),
+        generate: async ({ prompt }) => {
+            // Regeneration path for Part I
+            if (prompt.startsWith("Tạo 1 câu hỏi PHẦN I ")) {
+                if (prompt.includes("Vật lí nhiệt 12 — Câu 5")) {
+                    q5RegenAttempts++;
+                    // First regen still leaks a missing figure phrase -> pipeline MUST catch and retry a 2nd time!
+                    if (q5RegenAttempts === 1) {
+                        return {
+                            provider: "gemini",
+                            model: "mock-model",
+                            text: JSON.stringify({
+                                topic: "Vật lí nhiệt 12 — Câu 5",
+                                stemLatex: "Quan sát hình dưới đây và tính nhiệt lượng truyền cho khối thép.",
+                                svgFigure: "",
+                                figureCaption: "",
+                                optionA: "$10\\,\\text{kJ}$",
+                                optionB: "$20\\,\\text{kJ}$",
+                                optionC: "$30\\,\\text{kJ}$",
+                                optionD: "$40\\,\\text{kJ}$",
+                                correctOption: "A",
+                                solutionLatex: "Áp dụng $Q = mc\\Delta T$."
+                            })
+                        };
+                    }
+                    return {
+                        provider: "gemini",
+                        model: "mock-model",
+                        text: JSON.stringify({
+                            topic: "Vật lí nhiệt 12 — Câu 5",
+                            stemLatex: "Một thỏi chì nặng $3\\,\\text{kg}$ có nhiệt dung riêng $130\\,\\text{J/(kg}\\cdot\\text{K)}$ nguội đi từ $120^\\circ\\text{C}$ xuống $20^\\circ\\text{C}$. Nhiệt lượng tỏa ra môi trường bằng bao nhiêu?",
+                            svgFigure: "",
+                            figureCaption: "",
+                            optionA: "$39\\,\\text{kJ}$",
+                            optionB: "$19,5\\,\\text{kJ}$",
+                            optionC: "$78\\,\\text{kJ}$",
+                            optionD: "$3,9\\,\\text{kJ}$",
+                            correctOption: "A",
+                            solutionLatex: "Áp dụng $Q = mc|\\Delta T| = 3 \\cdot 130 \\cdot 100 = 39000\\,\\text{J} = 39\\,\\text{kJ}$."
+                        })
+                    };
+                }
+                q14RegenAttempts++;
+                return {
+                    provider: "gemini",
+                    model: "mock-model",
+                    text: JSON.stringify({
+                        topic: "Dòng điện xoay chiều 12",
+                        stemLatex: "Mạng điện dân dụng có điện áp tức thời $u = 220\\sqrt{2}\\cos(100\\pi t)\\,\\text{V}$. Giá trị hiệu dụng và tần số dòng điện lần lượt là bao nhiêu?",
+                        svgFigure: "",
+                        figureCaption: "",
+                        optionA: "$220\\,\\text{V}$ và $50\\,\\text{Hz}$",
+                        optionB: "$311\\,\\text{V}$ và $50\\,\\text{Hz}$",
+                        optionC: "$220\\,\\text{V}$ và $100\\,\\text{Hz}$",
+                        optionD: "$110\\,\\text{V}$ và $60\\,\\text{Hz}$",
+                        correctOption: "A",
+                        solutionLatex: "Ta có $U = U_0/\\sqrt{2} = 220\\,\\text{V}$ và $f = \\omega/(2\\pi) = 50\\,\\text{Hz}$."
+                    })
+                };
+            }
+
+            // Regeneration path for Part II
+            if (prompt.startsWith("Tạo 1 câu hỏi PHẦN II ")) {
+                p2q2RegenAttempts++;
+                return {
+                    provider: "gemini",
+                    model: "mock-model",
+                    text: JSON.stringify({
+                        topic: "Khí lí tưởng",
+                        stemLatex:
+                            "Thí nghiệm kiểm chứng định luật Boyle với ống thủy tinh chứa khí khô ở $300\\,\\text{K}$ thu được bảng số liệu:\n| Lần đo | $p$ ($\\text{kPa}$) | $V$ ($\\text{lít}$) |\n|---|---|---|\n| 1 | $100$ | $6$ |\n| 2 | $200$ | $3$ |",
+                        svgFigure: "",
+                        figureCaption: "",
+                        statements: [
+                            { label: "a", statementLatex: "Tích $pV$ giữ không đổi bằng $600\\,\\text{J}$ ở hai lần đo.", isTrue: true },
+                            { label: "b", statementLatex: "Áp suất tỉ lệ nghịch với thể tích trong quá trình đẳng nhiệt.", isTrue: true },
+                            { label: "c", statementLatex: "Nhiệt độ tuyệt đối tăng gấp đôi giữa lần 1 và lần 2.", isTrue: false },
+                            { label: "d", statementLatex: "Lượng khí thí nghiệm xấp xỉ $0,24\\,\\text{mol}$.", isTrue: true }
+                        ],
+                        solutionLatex: "Đổi $1\\,\\text{kPa}\\cdot\\text{lít} = 1\\,\\text{J}$, áp dụng $pV = nRT$."
+                    })
+                };
+            }
+
+            if (prompt.includes("từ Câu 1 đến Câu 9")) {
+                return {
+                    provider: "gemini",
+                    model: "mock-model",
+                    text: JSON.stringify({
+                        questions: p1Batch1Stems.map((stem, i) => ({
+                            number: i + 1,
+                            topic: i === 4 ? "Vật lí nhiệt 12 — Câu 5" : "Vật lí nhiệt & Khí lí tưởng",
+                            stemLatex: stem,
+                            svgFigure: "",
+                            figureCaption: "",
+                            optionA: `$${i + 1}1\\,\\text{đv}$`,
+                            optionB: `$${i + 2}2\\,\\text{đv}$`,
+                            optionC: `$${i + 3}3\\,\\text{đv}$`,
+                            optionD: `$${i + 4}4\\,\\text{đv}$`,
+                            correctOption: "A",
+                            solutionLatex: "Áp dụng công thức chuẩn SI."
+                        }))
+                    })
+                };
+            }
+
+            if (prompt.includes("từ Câu 10 đến Câu 18")) {
+                return {
+                    provider: "gemini",
+                    model: "mock-model",
+                    text: JSON.stringify({
+                        questions: p1Batch2Stems.map((stem, i) => ({
+                            number: i + 10,
+                            topic: "Từ trường & Hạt nhân",
+                            stemLatex: stem,
+                            svgFigure: "",
+                            figureCaption: "",
+                            optionA: `$${i + 1},2$`,
+                            optionB: `$${i + 2},4$`,
+                            // Inject missing figure leak inside optionC of Question 14!
+                            optionC: i === 4 ? "Chiều dòng điện như hình vẽ dưới đây" : `$${i + 3},6$`,
+                            optionD: `$${i + 4},8$`,
+                            correctOption: "B",
+                            solutionLatex: "Áp dụng công thức chuẩn SI."
+                        }))
+                    })
+                };
+            }
+
+            if (prompt.includes("PHẦN III")) {
+                return {
+                    provider: "gemini",
+                    model: "mock-model",
+                    text: JSON.stringify({
+                        questions: p3Stems.map((stem, i) => ({
+                            number: i + 1,
+                            topic: "Trả lời ngắn",
+                            stemLatex: stem,
+                            svgFigure: "",
+                            figureCaption: "",
+                            shortAnswer: `${i + 2},5`,
+                            solutionLatex: "Tính toán theo hệ SI."
+                        }))
+                    })
+                };
+            }
+
+            // Part II (4 True/False questions)
+            return {
+                provider: "gemini",
+                model: "mock-model",
+                text: JSON.stringify({
+                    questions: p2Fixtures.map((fix, i) => ({
+                        number: i + 1,
+                        topic: fix.topic,
+                        stemLatex: fix.stem,
+                        svgFigure: "",
+                        figureCaption: "",
+                        statements: fix.stmts,
+                        solutionLatex: "Phân tích từng ý a, b, c, d theo hệ SI."
+                    }))
+                })
+            };
+        }
+    };
+
+    const storage = {
+        activeVaultKey: "TEST-MISSING-FIG",
+        vault: {
+            hashes: new Set(),
+            shingleEntries: [],
+            sessionDuplicatesBlocked: 0,
+            sessionCurriculumRejected: 0,
+            sessionMissingFigureRejected: 0
+        },
+        saveExamAndFingerprints: async () => {}
+    };
+
+    const exam = await runFullExamPipeline({
+        aiClient,
+        harvester,
+        storage,
+        priorityMode: "vn_priority",
+        difficultyKey: "standard",
+        onProgress: () => {},
+        onEntropy: () => {},
+        onLog: (msg, level) => logs.push({ msg, level })
+    });
+
+    assert.equal(q5RegenAttempts, 2, "Expected Q5 to fail first regen and succeed on second regen");
+    assert.equal(q14RegenAttempts, 1, "Expected Q14 (bad optionC) to be regenerated once");
+    assert.equal(p2q2RegenAttempts, 1, "Expected Part II Q2 (bad statement b) to be regenerated once");
+    assert.ok(exam.harvestSummary.missingFigureRejected >= 4);
+
+    assert.ok(logs.some((l) => l.msg.includes("[Chặn thiếu hình PART1 Câu 5]")));
+    assert.ok(logs.some((l) => l.msg.includes("[Chặn thiếu hình PART1 Câu 14]")));
+    assert.ok(logs.some((l) => l.msg.includes("[Chặn thiếu hình PART2 Câu 2]")));
+    assert.ok(logs.some((l) => l.msg.includes("[Đã phục hồi PART1 Câu 5]")));
+
+    // Zero missing-figure questions across the ENTIRE compiled 28-question exam!
+    for (const q of exam.part1) {
+        assert.equal(validateQuestionMissingFigures(q, "part1").ok, true, `Part I Q${q.number} leaked missing figure`);
+    }
+    for (const q of exam.part2) {
+        assert.equal(validateQuestionMissingFigures(q, "part2").ok, true, `Part II Q${q.number} leaked missing figure`);
+    }
+    for (const q of exam.part3) {
+        assert.equal(validateQuestionMissingFigures(q, "part3").ok, true, `Part III Q${q.number} leaked missing figure`);
+    }
+});
+

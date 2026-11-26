@@ -9,5 +9,8 @@ export default async function handler(req, res) {
     const result = await handleHarvestProxyRequest(rawUrl);
     res.setHeader("Content-Type", result.contentType);
     res.setHeader("Cache-Control", "public, max-age=120");
+    if (typeof result.filteredMissingFigures === "number") {
+        res.setHeader("X-Harvest-Filtered-Missing-Figures", String(result.filteredMissingFigures));
+    }
     return res.status(result.status).send(result.body);
 }

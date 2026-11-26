@@ -566,7 +566,9 @@ function updateStorageAndHistoryUI() {
         (v.totalDuplicatesBlocked || 0) +
         (v.sessionDuplicatesBlocked || 0) +
         (v.totalCurriculumRejected || 0) +
-        (v.sessionCurriculumRejected || 0);
+        (v.sessionCurriculumRejected || 0) +
+        (v.totalMissingFigureRejected || 0) +
+        (v.sessionMissingFigureRejected || 0);
     const key = storage.activeVaultKey;
 
     dom.topVaultLabel.textContent = key;
@@ -694,8 +696,91 @@ function renderPersistentHistoryList() {
 // 6. EXAM WORKSPACE RENDERER (KATEX + INLINE SVG + LATEX + COPY BUTTONS)
 // =========================================================================
 
+function splitMarkdownTableRow(line) {
+    let s = String(line || "").trim();
+    if (s.startsWith("|")) s = s.slice(1);
+    if (s.endsWith("|") && !s.endsWith("\\|")) s = s.slice(0, -1);
+
+    const cells = [];
+    let current = "";
+    let inMath = false;
+
+    for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        const prev = i > 0 ? s[i - 1] : "";
+        if (ch === "$" && prev !== "\\") {
+            inMath = !inMath;
+            current += ch;
+        } else if (ch === "|" && !inMath && prev !== "\\") {
+            cells.push(current.trim());
+            current = "";
+        } else {
+            current += ch;
+        }
+    }
+    cells.push(current.trim());
+    return cells;
+}
+
+function isMarkdownTableSeparator(line) {
+    const trimmed = String(line || "").trim();
+    if (!trimmed.includes("|") || !trimmed.includes("-")) return false;
+    const cells = splitMarkdownTableRow(trimmed);
+    return cells.length >= 2 && cells.every((c) => /^:?-{2,}:?$/.test(c));
+}
+
 function formatMathHtml(rawLatex) {
-    return escapeHtml(rawLatex || "").replace(/\n/g, "<br>");
+    const text = String(rawLatex || "").replace(/\r\n?/g, "\n");
+    if (!text.includes("|")) {
+        return escapeHtml(text).replace(/\n/g, "<br>");
+    }
+
+    const lines = text.split("\n");
+    const blocks = [];
+    let textBuffer = [];
+
+    const flushText = () => {
+        if (textBuffer.length === 0) return;
+        blocks.push(textBuffer.map((l) => escapeHtml(l)).join("<br>"));
+        textBuffer = [];
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+        const cur = lines[i];
+        const next = i + 1 < lines.length ? lines[i + 1] : "";
+
+        if (cur.includes("|") && isMarkdownTableSeparator(next)) {
+            const headers = splitMarkdownTableRow(cur);
+            if (headers.length >= 2) {
+                flushText();
+                const bodyRows = [];
+                let j = i + 2;
+                while (j < lines.length) {
+                    const rowLine = lines[j].trim();
+                    if (!rowLine || !rowLine.includes("|")) break;
+                    bodyRows.push(splitMarkdownTableRow(rowLine));
+                    j++;
+                }
+
+                const headHtml = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
+                const bodyHtml = bodyRows.length
+                    ? `<tbody>${bodyRows
+                          .map((r) => {
+                              const padded = Array.from({ length: headers.length }, (_, idx) => r[idx] ?? "");
+                              return `<tr>${padded.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`;
+                          })
+                          .join("")}</tbody>`
+                    : "";
+                blocks.push(`<div class="physics-table-wrap thin-scroll"><table class="physics-data-table">${headHtml}${bodyHtml}</table></div>`);
+                i = j - 1;
+                continue;
+            }
+        }
+        textBuffer.push(cur);
+    }
+
+    flushText();
+    return blocks.join("");
 }
 
 function renderSvgFigureHtml(q) {
